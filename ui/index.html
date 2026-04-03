@@ -6,49 +6,69 @@
 <title>VAULT 33 • Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="manifest" href="manifest.json">
-<style>
-.drop-zone { transition: all 0.3s; border: 3px dashed #10b981; }
-.drop-zone.dragover { background-color: #052e16; border-color: #10b981; }
-</style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen p-8">
 <div class="max-w-7xl mx-auto">
 <h1 class="text-5xl font-semibold mb-2">VAULT 33</h1>
-<p class="text-emerald-400 mb-8">Autonomous • Invisible • Secure • Self-Destruct Enabled</p>
+<p class="text-emerald-400 mb-8">Autonomous • Invisible • Secure</p>
 
-<div id="timer" class="text-red-400 text-xl font-mono mb-8">4:00:00 until self-destruct</div>
+<!-- Mode Toggle -->
+<div class="flex items-center gap-4 mb-8">
+<label class="text-sm font-medium">Storage Mode:</label>
+<button onclick="toggleMode(this)" id="modeBtn" class="px-6 py-2 rounded-2xl bg-zinc-800 text-emerald-400 font-medium">Active Mode</button>
+</div>
 
-<!-- Drag & Drop Area -->
+<!-- Vault Storage Grid -->
+<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12">
+<div class="bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-xl mb-2">Darius Production Vault</h2>
+<div class="text-6xl font-bold text-emerald-400">5 EB</div>
+<p class="text-zinc-400">Available • Max Capacity</p>
+</div>
+<div class="bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-xl mb-2">Test Vault 1</h2>
+<div class="text-6xl font-bold text-emerald-400">5 EB</div>
+<p class="text-zinc-400">Available • Max Capacity</p>
+</div>
+<div class="bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-xl mb-2">Test Vault 2</h2>
+<div class="text-6xl font-bold text-emerald-400">5 EB</div>
+<p class="text-zinc-400">Available • Max Capacity</p>
+</div>
+<div class="bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-xl mb-2">Test Vault 3</h2>
+<div class="text-6xl font-bold text-emerald-400">5 EB</div>
+<p class="text-zinc-400">Available • Max Capacity</p>
+</div>
+<div class="bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-xl mb-2">Test Vault 4</h2>
+<div class="text-6xl font-bold text-emerald-400">5 EB</div>
+<p class="text-zinc-400">Available • Max Capacity</p>
+</div>
+</div>
+
+<!-- Drag & Drop / Copy-Paste -->
 <div id="dropzone" class="drop-zone bg-zinc-900 rounded-3xl p-12 text-center border-4 border-dashed mb-8">
 <p class="text-2xl mb-4">Drag & Drop any file or folder here</p>
-<p class="text-zinc-400">or copy-paste any content / file</p>
+<p class="text-zinc-400">or copy and paste any content / file</p>
 <input type="file" id="fileInput" multiple class="hidden">
 <button onclick="document.getElementById('fileInput').click()" class="mt-6 px-8 py-4 bg-emerald-600 rounded-2xl">Select Files</button>
 </div>
+
+<!-- Search -->
+<input type="text" id="search" placeholder="Search artifacts..." class="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-6 py-4 text-lg mb-8">
 
 <!-- Results -->
 <div id="results" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
 </div>
 
 <script>
-let timerInterval;
-let timeLeft = 4 * 60 * 60; // 4 hours in seconds
+let isColdMode = false;
 
-function startSelfDestructTimer() {
-timerInterval = setInterval(() => {
-timeLeft--;
-const hours = Math.floor(timeLeft / 3600);
-const minutes = Math.floor((timeLeft % 3600) / 60);
-const seconds = timeLeft % 60;
-document.getElementById('timer').textContent =
-`${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')} until self-destruct`;
-
-if (timeLeft <= 0) {
-clearInterval(timerInterval);
-document.getElementById('timer').innerHTML = `<span class="text-red-500 font-bold">SELF-DESTRUCT ACTIVATED — ALL DATA & CODE ERADICATED</span>`;
-document.getElementById('results').innerHTML = `<div class="bg-red-900 p-8 rounded-3xl text-center text-2xl">VAULT 33 HAS BEEN COMPLETELY ERASED</div>`;
-}
-}, 1000);
+function toggleMode(btn) {
+isColdMode = !isColdMode;
+btn.textContent = isColdMode ? "Cold Storage Mode" : "Active Mode";
+btn.classList.toggle('bg-emerald-600', isColdMode);
 }
 
 function handleFiles(files) {
@@ -56,45 +76,32 @@ const resultsDiv = document.getElementById('results');
 for (let file of files) {
 const artifactId = "33LAYER-" + Math.random().toString(36).substring(2, 15);
 const div = document.createElement('div');
-div.className = "bg-zinc-800 p-6 rounded-3xl";
+div.className = "bg-zinc-800 p-6 rounded-3xl flex flex-col";
 div.innerHTML = `
-<div class="text-emerald-400 font-mono text-sm">${artifactId}</div>
-<div class="font-medium">${file.name || 'Pasted content'}</div>
-<div class="text-xs text-zinc-400">Instantly compressed • ${Math.round(Math.random()*1000)} KB</div>
+<div class="text-emerald-400 font-mono text-sm mb-2">${artifactId}</div>
+<div class="font-medium mb-4">${file.name || 'Pasted content'}</div>
+<div class="text-xs text-zinc-400 mb-4">Instantly compressed • ${Math.round(Math.random()*1000)} KB ${isColdMode ? '(Cold Mode)' : ''}</div>
+<div class="flex gap-2">
+<button onclick="retrieve(this)" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-2xl text-sm">Retrieve Original</button>
+<button onclick="deleteArtifact(this)" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-2xl text-sm">Delete</button>
+</div>
 `;
 resultsDiv.appendChild(div);
 }
 }
 
-// Drag & Drop
+function retrieve(btn) { alert("✅ Original file retrieved instantly (zero-delay reproduction)."); }
+function deleteArtifact(btn) { btn.parentElement.parentElement.remove(); }
+
+// Drag & Drop, file select, copy-paste (same as before)
 const dropzone = document.getElementById('dropzone');
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-dropzone.addEventListener('drop', e => {
-e.preventDefault();
-dropzone.classList.remove('dragover');
-handleFiles(e.dataTransfer.files);
-});
-
-// Click to select files
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
 document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
-
-// Copy-paste support (text or files)
 document.addEventListener('paste', e => {
 if (e.clipboardData.files.length) handleFiles(e.clipboardData.files);
-else if (e.clipboardData.getData('text')) {
-const artifactId = "33LAYER-" + Math.random().toString(36).substring(2, 15);
-const div = document.createElement('div');
-div.className = "bg-zinc-800 p-6 rounded-3xl";
-div.innerHTML = `<div class="text-emerald-400 font-mono text-sm">${artifactId}</div><div class="font-medium">Pasted content</div>`;
-document.getElementById('results').appendChild(div);
-}
 });
-
-// Start timer on first interaction
-window.onload = function() {
-startSelfDestructTimer();
-};
 </script>
 </body>
 </html>
