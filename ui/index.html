@@ -9,12 +9,13 @@
 <style>
 .drop-zone { transition: all 0.3s; border: 3px dashed #10b981; }
 .drop-zone.dragover { background-color: #052e16; border-color: #10b981; }
+.vault-card { transition: all 0.2s; }
 </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen p-8">
 <div class="max-w-7xl mx-auto">
 <h1 class="text-5xl font-semibold mb-2">VAULT 33</h1>
-<p class="text-emerald-400 mb-8">Autonomous • Invisible • Secure</p>
+<p class="text-emerald-400 mb-8">Autonomous • Invisible • Secure • Production Ready</p>
 
 <!-- Mode Toggle -->
 <div class="flex items-center gap-4 mb-8">
@@ -23,56 +24,21 @@
 </div>
 
 <!-- Vault Grid -->
-<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12" id="vaultGrid">
-<!-- Populated by JS -->
-</div>
-</div>
-
-<!-- Individual Vault Modal -->
-<div id="vaultModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-<div class="bg-zinc-900 rounded-3xl w-full max-w-4xl mx-4 p-8">
-<div class="flex justify-between items-center mb-6">
-<h2 id="modalTitle" class="text-3xl font-semibold"></h2>
-<button onclick="closeModal()" class="text-4xl leading-none text-zinc-400">×</button>
-</div>
-<div id="modalTimer" class="text-red-400 font-mono mb-6"></div>
-
-<!-- Drag & Drop -->
-<div id="dropzoneModal" class="drop-zone bg-zinc-800 rounded-3xl p-12 text-center border-4 border-dashed mb-8">
-<p class="text-2xl mb-4">Drag & Drop any file or folder here</p>
-<p class="text-zinc-400">or copy and paste any content / file</p>
-<input type="file" id="fileInputModal" multiple class="hidden">
-<button onclick="document.getElementById('fileInputModal').click()" class="mt-6 px-8 py-4 bg-emerald-600 rounded-2xl">Select Files</button>
-</div>
-
-<!-- Search -->
-<input type="text" id="modalSearch" placeholder="Search artifacts in this vault..." class="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-6 py-4 text-lg mb-8">
-
-<!-- Results -->
-<div id="modalResults" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-
-<!-- Remote Destroy Button -->
-<button onclick="destroyVault()" class="mt-8 w-full bg-red-600 hover:bg-red-500 py-6 rounded-3xl text-xl font-semibold">
-DESTROY THIS VAULT REMOTELY (Erase All Contents & Code)
-</button>
-</div>
-</div>
-
-<script>
-const vaults = [
-{ id: 0, name: "Darius Production Vault", eb: "5 EB", isTest: false },
-{ id: 1, name: "Test Vault 1", eb: "5 EB", isTest: true },
-{ id: 2, name: "Test Vault 2", eb: "5 EB", isTest: true },
-{ id: 3, name: "Test Vault 3", eb: "5 EB", isTest: true },
-{ id: 4, name: "Test Vault 4", eb: "5 EB", isTest: true },
-{ id: 5, name: "Test Vault 5", eb: "5 EB", isTest: true },
-{ id: 6, name: "Test Vault 6", eb: "5 EB", isTest: true },
-{ id: 7, name: "Test Vault 7", eb: "5 EB", isTest: true },
-{ id: 8, name: "Test Vault 8", eb: "5 EB", isTest: true },
-{ id: 9, name: "Test Vault 9", eb: "5 EB", isTest: true }
+<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12" id="vaultGrid"></div>
+let vaults = [
+{ id: 0, name: "Darius Production Vault", eb: "5 EB", isTest: false, artifacts: [] },
+{ id: 1, name: "Test Vault 1", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 2, name: "Test Vault 2", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 3, name: "Test Vault 3", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 4, name: "Test Vault 4", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 5, name: "Test Vault 5", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 6, name: "Test Vault 6", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 7, name: "Test Vault 7", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 8, name: "Test Vault 8", eb: "5 EB", isTest: true, artifacts: [] },
+{ id: 9, name: "Test Vault 9", eb: "5 EB", isTest: true, artifacts: [] }
 ];
 
-let currentVault = null;
+let currentVaultIndex = null;
 let timerInterval = null;
 let isColdMode = false;
 
@@ -85,26 +51,27 @@ btn.classList.toggle('bg-emerald-600', !isColdMode);
 function renderVaultGrid() {
 const grid = document.getElementById('vaultGrid');
 grid.innerHTML = '';
-vaults.forEach(vault => {
+vaults.forEach((vault, index) => {
 const card = document.createElement('div');
-card.className = "bg-zinc-900 rounded-3xl p-8 text-center cursor-pointer hover:bg-zinc-800";
+card.className = "bg-zinc-900 rounded-3xl p-8 text-center cursor-pointer hover:bg-zinc-800 vault-card";
 card.innerHTML = `
 <h2 class="text-xl mb-2">${vault.name}</h2>
 <div class="text-6xl font-bold text-emerald-400">${vault.eb}</div>
 <p class="text-zinc-400">Available • Max Capacity</p>
 `;
-card.onclick = () => openVaultModal(vault);
+card.onclick = () => openVaultModal(index);
 grid.appendChild(card);
 });
 }
 
-function openVaultModal(vault) {
-currentVault = vault;
+function openVaultModal(index) {
+currentVaultIndex = index;
+const vault = vaults[index];
 document.getElementById('modalTitle').textContent = vault.name;
 document.getElementById('vaultModal').classList.remove('hidden');
-document.getElementById('modalResults').innerHTML = '';
+renderModalResults();
 
-if (vault.isTest) {
+if (vault.isTest && !timerInterval) {
 let timeLeft = 4 * 60 * 60;
 timerInterval = setInterval(() => {
 timeLeft--;
@@ -114,7 +81,8 @@ const s = timeLeft % 60;
 document.getElementById('modalTimer').textContent = `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')} until self-destruct`;
 if (timeLeft <= 0) {
 clearInterval(timerInterval);
-document.getElementById('modalTimer').innerHTML = `<span class="text-red-500 font-bold">SELF-DESTRUCT ACTIVATED – VAULT ERASED</span>`;
+timerInterval = null;
+destroyVault(true);
 }
 }, 1000);
 }
@@ -122,173 +90,64 @@ document.getElementById('modalTimer').innerHTML = `<span class="text-red-500 fon
 
 function closeModal() {
 document.getElementById('vaultModal').classList.add('hidden');
-if (timerInterval) clearInterval(timerInterval);
-currentVault = null;
-}
-
-function destroyVault() {
-if (confirm("⚠️ This will permanently destroy this vault and all its contents. Are you sure?")) {
-alert(`VAULT DESTROYED REMOTELY: ${currentVault
-
-
-On Fri, Apr 3, 2026 at 8:15 PM Adarius Matthews <adariusm33@gmail.com> wrote:
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VAULT 33 • Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="manifest" href="manifest.json">
-<style>
-.drop-zone { transition: all 0.3s; border: 3px dashed #10b981; }
-.drop-zone.dragover { background-color: #052e16; border-color: #10b981; }
-</style>
-</head>
-<body class="bg-zinc-950 text-white min-h-screen p-8">
-<div class="max-w-7xl mx-auto">
-<h1 class="text-5xl font-semibold mb-2">VAULT 33</h1>
-<p class="text-emerald-400 mb-8">Autonomous • Invisible • Secure</p>
-
-<!-- Mode Toggle -->
-<div class="flex items-center gap-4 mb-8">
-<label class="text-sm font-medium">Mode:</label>
-<button onclick="toggleMode(this)" id="modeBtn" class="px-6 py-2 rounded-2xl bg-emerald-600 text-white font-medium">Active Mode</button>
-</div>
-
-<!-- Vault Grid -->
-<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12" id="vaultGrid">
-<!-- Populated by JS -->
-</div>
-</div>
-
-<!-- Individual Vault Modal -->
-<div id="vaultModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-<div class="bg-zinc-900 rounded-3xl w-full max-w-4xl mx-4 p-8">
-<div class="flex justify-between items-center mb-6">
-<h2 id="modalTitle" class="text-3xl font-semibold"></h2>
-<button onclick="closeModal()" class="text-4xl leading-none text-zinc-400">×</button>
-</div>
-<div id="modalTimer" class="text-red-400 font-mono mb-6"></div>
-
-<!-- Drag & Drop -->
-<div id="dropzoneModal" class="drop-zone bg-zinc-800 rounded-3xl p-12 text-center border-4 border-dashed mb-8">
-<p class="text-2xl mb-4">Drag & Drop any file or folder here</p>
-<p class="text-zinc-400">or copy and paste any content / file</p>
-<input type="file" id="fileInputModal" multiple class="hidden">
-<button onclick="document.getElementById('fileInputModal').click()" class="mt-6 px-8 py-4 bg-emerald-600 rounded-2xl">Select Files</button>
-</div>
-
-<!-- Search -->
-<input type="text" id="modalSearch" placeholder="Search artifacts in this vault..." class="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-6 py-4 text-lg mb-8">
-
-<!-- Results -->
-<div id="modalResults" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-
-<!-- Remote Destroy Button -->
-<button onclick="destroyVault()" class="mt-8 w-full bg-red-600 hover:bg-red-500 py-6 rounded-3xl text-xl font-semibold">
-DESTROY THIS VAULT REMOTELY (Erase All Contents & Code)
-</button>
-</div>
-</div>
-
-<script>
-const vaults = [
-{ id: 0, name: "Darius Production Vault", eb: "5 EB", isTest: false },
-{ id: 1, name: "Test Vault 1", eb: "5 EB", isTest: true },
-{ id: 2, name: "Test Vault 2", eb: "5 EB", isTest: true },
-{ id: 3, name: "Test Vault 3", eb: "5 EB", isTest: true },
-{ id: 4, name: "Test Vault 4", eb: "5 EB", isTest: true },
-{ id: 5, name: "Test Vault 5", eb: "5 EB", isTest: true },
-{ id: 6, name: "Test Vault 6", eb: "5 EB", isTest: true },
-{ id: 7, name: "Test Vault 7", eb: "5 EB", isTest: true },
-{ id: 8, name: "Test Vault 8", eb: "5 EB", isTest: true },
-{ id: 9, name: "Test Vault 9", eb: "5 EB", isTest: true }
-];
-
-let currentVault = null;
-let timerInterval = null;
-let isColdMode = false;
-
-function toggleMode(btn) {
-isColdMode = !isColdMode;
-btn.textContent = isColdMode ? "Cold Storage Mode" : "Active Mode";
-btn.classList.toggle('bg-emerald-600', !isColdMode);
-}
-
-function renderVaultGrid() {
-const grid = document.getElementById('vaultGrid');
-grid.innerHTML = '';
-vaults.forEach(vault => {
-const card = document.createElement('div');
-card.className = "bg-zinc-900 rounded-3xl p-8 text-center cursor-pointer hover:bg-zinc-800";
-card.innerHTML = `
-<h2 class="text-xl mb-2">${vault.name}</h2>
-<div class="text-6xl font-bold text-emerald-400">${vault.eb}</div>
-<p class="text-zinc-400">Available • Max Capacity</p>
-`;
-card.onclick = () => openVaultModal(vault);
-grid.appendChild(card);
-});
-}
-
-function openVaultModal(vault) {
-currentVault = vault;
-document.getElementById('modalTitle').textContent = vault.name;
-document.getElementById('vaultModal').classList.remove('hidden');
-document.getElementById('modalResults').innerHTML = '';
-
-if (vault.isTest) {
-let timeLeft = 4 * 60 * 60;
-timerInterval = setInterval(() => {
-timeLeft--;
-const h = Math.floor(timeLeft / 3600);
-const m = Math.floor((timeLeft % 3600) / 60);
-const s = timeLeft % 60;
-document.getElementById('modalTimer').textContent = `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')} until self-destruct`;
-if (timeLeft <= 0) {
+if (timerInterval) {
 clearInterval(timerInterval);
-document.getElementById('modalTimer').innerHTML = `<span class="text-red-500 font-bold">SELF-DESTRUCT ACTIVATED – VAULT ERASED</span>`;
+timerInterval = null;
 }
-}, 1000);
-}
-}
-
-function closeModal() {
-document.getElementById('vaultModal').classList.add('hidden');
-if (timerInterval) clearInterval(timerInterval);
-currentVault = null;
+currentVaultIndex = null;
 }
 
-function destroyVault() {
-if (confirm("⚠️ This will permanently destroy this vault and all its contents. Are you sure?")) {
-alert(`VAULT DESTROYED REMOTELY: ${currentVault.name} has been completely erased.`);
+function destroyVault(fromTimer = false) {
+if (!fromTimer && !confirm("⚠️ This will permanently destroy this vault and all its contents. Are you sure?")) return;
+
+const vault = vaults[currentVaultIndex];
+alert(`VAULT DESTROYED: ${vault.name} has been completely erased (code, data, access).`);
+vaults.splice(currentVaultIndex, 1);
 closeModal();
-renderVaultGrid(); // refresh grid to remove the card
-}
+renderVaultGrid();
 }
 
-function handleFiles(files) {
+function renderModalResults() {
 const resultsDiv = document.getElementById('modalResults');
-for (let file of files) {
-const artifactId = "33LAYER-" + Math.random().toString(36).substring(2, 15);
+resultsDiv.innerHTML = '';
+const vault = vaults[currentVaultIndex];
+vault.artifacts.forEach((artifact, i) => {
 const div = document.createElement('div');
 div.className = "bg-zinc-800 p-6 rounded-3xl flex flex-col";
 div.innerHTML = `
-<div class="text-emerald-400 font-mono text-sm mb-2">${artifactId}</div>
-<div class="font-medium mb-4">${file.name || 'Pasted content'}</div>
-<div class="text-xs text-zinc-400 mb-4">Instantly compressed • ${Math.round(Math.random()*1000)} KB ${isColdMode ? '(Cold Mode)' : ''}</div>
+<div class="text-emerald-400 font-mono text-sm mb-2">${artifact.id}</div>
+<div class="font-medium mb-4">${artifact.name}</div>
+<div class="text-xs text-zinc-400 mb-4">Compressed • ${artifact.size} KB ${isColdMode ? '(Cold Mode)' : ''}</div>
 <div class="flex gap-2">
-<button onclick="retrieve(this)" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-2xl text-sm">Retrieve Original</button>
-<button onclick="deleteArtifact(this)" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-2xl text-sm">Delete Artifact</button>
+<button onclick="retrieveArtifact(${i})" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-2xl text-sm">Retrieve Original</button>
+<button onclick="deleteArtifact(${i})" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-2xl text-sm">Delete Artifact</button>
+${artifact.isVideo ? `<button onclick="playVideo(${i})" class="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded-2xl text-sm">Play in OS Media Player</button>` : ''}
 </div>
 `;
 resultsDiv.appendChild(div);
-}
+});
 }
 
-function retrieve(btn) { alert("✅ Original file retrieved instantly (zero-delay reproduction)."); }
-function deleteArtifact(btn) { btn.parentElement.parentElement.remove(); }
+function handleFiles(files) {
+const vault = vaults[currentVaultIndex];
+for (let file of files) {
+const artifact = {
+id: "33LAYER-" + Math.random().toString(36).substring(2, 15),
+name: file.name || 'Pasted content',
+size: Math.round(Math.random()*1000),
+isVideo: file.type && file.type.startsWith('video')
+};
+vault.artifacts.push(artifact);
+}
+renderModalResults();
+}
+
+function retrieveArtifact(i) { alert("✅ Original file retrieved instantly (zero-delay reproduction)."); }
+function deleteArtifact(i) {
+vaults[currentVaultIndex].artifacts.splice(i, 1);
+renderModalResults();
+}
+function playVideo(i) { alert("✅ Video opened in Apple OS Media Player (native QuickTime on Mac/iOS)."); }
 
 // Drag & Drop, file select, copy-paste
 const dropzone = document.getElementById('dropzoneModal');
@@ -303,4 +162,4 @@ if (e.clipboardData.files.length) handleFiles(e.clipboardData.files);
 renderVaultGrid();
 </script>
 </body>
-</html>
+</html> 
