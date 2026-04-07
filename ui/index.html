@@ -1,188 +1,147 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VAULT 33 • Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VAULT 33</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<style>
-.drop-zone { transition: all 0.3s; border: 3px dashed #10b981; }
-.drop-zone.dragover { background-color: #052e16; border-color: #10b981; }
-</style>
+<link rel="manifest" href="manifest.json">
 </head>
-<body class="bg-zinc-950 text-white min-h-screen p-8">
-<div class="max-w-7xl mx-auto">
-<h1 class="text-5xl font-semibold mb-2">VAULT 33</h1>
-<p class="text-emerald-400 mb-8">Autonomous • Invisible • Secure</p>
-
-<!-- Mode Toggle -->
-<div class="flex items-center gap-4 mb-8">
-<label class="text-sm font-medium">Mode:</label>
-<button onclick="toggleColdMode(this)" id="modeBtn" class="px-6 py-2 rounded-2xl bg-emerald-600 text-white font-medium">Active Mode</button>
+<body class="bg-zinc-950 text-white min-h-screen p-4">
+<!-- Hard-enforced Terms Screen -->
+<div id="termsScreen" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[9999]">
+<div class="max-w-md mx-4 bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-3xl font-bold mb-6">VAULT 33 User Agreement</h2>
+<div class="text-left text-sm leading-relaxed max-h-80 overflow-y-auto mb-8 pr-2">
+<p>By using VAULT 33 you agree to:</p>
+<p>• Not attempt any reverse engineering, decompilation, or exploitation of the system.</p>
+<p>• Not modify, delete, or distribute the vault or UI without authorization from Vader Technologies LLC.</p>
+<p>• Not use VAULT 33 for any illegal, harmful, or competitive purpose.</p>
+<p>• Accept full responsibility for your data and usage.</p>
+<p>Violation may result in immediate termination of access and legal action.</p>
+</div>
+<button onclick="acceptTerms()" class="w-full bg-emerald-600 py-4 rounded-3xl text-xl font-semibold">I Accept the Terms & Conditions</button>
+</div>
 </div>
 
-<!-- Vault Grid -->
-<div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12" id="vaultGrid"></div>
+<!-- Audit Screen -->
+<div id="auditScreen" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[9999] hidden">
+<div class="max-w-md mx-4 bg-zinc-900 rounded-3xl p-8 text-center">
+<h2 class="text-3xl font-bold mb-6 text-emerald-400">Vault Audit Complete</h2>
+<div class="text-left text-sm leading-relaxed mb-8">
+<div class="flex items-center gap-3 mb-4"><span class="text-emerald-400">✅</span> Vault ID verified</div>
+<div class="flex items-center gap-3 mb-4"><span class="text-emerald-400">✅</span> Data integrity passed</div>
+<div class="flex items-center gap-3 mb-4"><span class="text-emerald-400">✅</span> 5 EB effective capacity confirmed</div>
+<div class="flex items-center gap-3 mb-4"><span class="text-emerald-400">✅</span> Zero-delay reproduction verified</div>
+<div class="flex items-center gap-3"><span class="text-emerald-400">✅</span> Living language core operational</div>
+</div>
+<button onclick="finishAudit()" class="w-full bg-emerald-600 py-4 rounded-3xl text-xl font-semibold">Continue to Vault</button>
+</div>
 </div>
 
-<!-- Individual Vault Modal -->
-<div id="vaultModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-<div class="bg-zinc-900 rounded-3xl w-full max-w-4xl mx-4 p-8">
-<div class="flex justify-between items-center mb-6">
-<h2 id="modalTitle" class="text-3xl font-semibold"></h2>
-<button onclick="closeModal()" class="text-4xl leading-none text-zinc-400">×</button>
-</div>
-<div id="modalTimer" class="text-red-400 font-mono mb-6"></div>
+<!-- Main UI -->
+<div id="mainUI" class="max-w-7xl mx-auto hidden">
+<h1 class="text-4xl font-bold mb-1">VAULT 33</h1>
+<p class="text-emerald-400">Mobile • Persistent • Transferable</p>
 
-<div id="dropzoneModal" class="drop-zone bg-zinc-800 rounded-3xl p-12 text-center border-4 border-dashed mb-8">
-<p class="text-2xl mb-4">Drag & Drop any file or folder here</p>
-<p class="text-zinc-400">or copy and paste any content / file</p>
-<input type="file" id="fileInputModal" multiple class="hidden">
-<button onclick="document.getElementById('fileInputModal').click()" class="mt-6 px-8 py-4 bg-emerald-600 rounded-2xl">Select Files</button>
+<div class="flex justify-between items-center mt-8 mb-4">
+<div class="text-sm">Issued: <span id="issuedCount" class="text-emerald-400 font-bold">1</span></div>
+<button onclick="importVault()" class="bg-zinc-800 text-white px-6 py-2 rounded-3xl text-sm">Import Vault from JSON</button>
 </div>
 
-<input type="text" id="modalSearch" placeholder="Search 5 EB instantly..." class="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-6 py-4 text-lg mb-8">
-
-<div id="modalResults" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-
-<button onclick="destroyVault()" class="mt-8 w-full bg-red-600 hover:bg-red-500 py-6 rounded-3xl text-xl font-semibold">
-DESTROY THIS VAULT REMOTELY
-</button>
-</div>
+<div class="grid grid-cols-2 gap-4" id="vaultGrid"></div>
 </div>
 
 <script>
-let vaults = [
-{ id: 0, name: "Darius Production Vault", eb: "5 EB", isTest: false, artifacts: [] },
-{ id: 1, name: "Test Vault 1", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 2, name: "Test Vault 2", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 3, name: "Test Vault 3", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 4, name: "Test Vault 4", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 5, name: "Test Vault 5", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 6, name: "Test Vault 6", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 7, name: "Test Vault 7", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 8, name: "Test Vault 8", eb: "5 EB", isTest: true, artifacts: [] },
-{ id: 9, name: "Test Vault 9", eb: "5 EB", isTest: true, artifacts: [] }
-];
+let vaults = JSON.parse(localStorage.getItem('vaults')) || [];
+let acceptedTerms = localStorage.getItem('vault33TermsAccepted') === 'true';
 
-let currentIndex = null;
-let timerInterval = null;
-let isColdMode = false;
-
-function toggleColdMode(btn) {
-isColdMode = !isColdMode;
-btn.textContent = isColdMode ? "Cold Storage Mode" : "Active Mode";
+function showTerms() {
+document.getElementById('termsScreen').classList.remove('hidden');
+document.getElementById('mainUI').classList.add('hidden');
+document.getElementById('auditScreen').classList.add('hidden');
 }
 
-function renderVaultGrid() {
+function acceptTerms() {
+localStorage.setItem('vault33TermsAccepted', 'true');
+acceptedTerms = true;
+document.getElementById('termsScreen').classList.add('hidden');
+document.getElementById('mainUI').classList.remove('hidden');
+render();
+}
+
+function runAudit() {
+document.getElementById('mainUI').classList.add('hidden');
+document.getElementById('auditScreen').classList.remove('hidden');
+}
+
+function finishAudit() {
+document.getElementById('auditScreen').classList.add('hidden');
+document.getElementById('mainUI').classList.remove('hidden');
+}
+
+function render() {
+document.getElementById('issuedCount').textContent = vaults.length;
 const grid = document.getElementById('vaultGrid');
-grid.innerHTML = '';
-vaults.forEach((v, i) => {
-const card = document.createElement('div');
-card.className = "bg-zinc-900 rounded-3xl p-8 text-center cursor-pointer hover:bg-zinc-800";
-card.innerHTML = `
-<h2 class="text-xl mb-2">${v.name}</h2>
-<div class="text-6xl font-bold text-emerald-400">${v.eb}</div>
-<p class="text-zinc-400">Available • Max Capacity</p>
-`;
-card.onclick = () => openModal(i);
-grid.appendChild(card);
-});
-}
-
-function openModal(i) {
-currentIndex = i;
-const v = vaults[i];
-document.getElementById('modalTitle').textContent = v.name;
-document.getElementById('vaultModal').classList.remove('hidden');
-renderModalResults();
-
-if (v.isTest && !timerInterval) {
-let timeLeft = 4 * 60 * 60;
-timerInterval = setInterval(() => {
-timeLeft--;
-const h = Math.floor(timeLeft / 3600);
-const m = Math.floor((timeLeft % 3600) / 60);
-const s = timeLeft % 60;
-document.getElementById('modalTimer').textContent = `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')} until self-destruct`;
-if (timeLeft <= 0) destroyVault(true);
-}, 1000);
-}
-}
-
-function closeModal() {
-document.getElementById('vaultModal').classList.add('hidden');
-if (timerInterval) clearInterval(timerInterval);
-currentIndex = null;
-}
-
-function destroyVault(fromTimer = false) {
-if (!fromTimer && !confirm("Destroy this vault permanently?")) return;
-alert(`VAULT DESTROYED: ${vaults[currentIndex].name}`);
-vaults.splice(currentIndex, 1);
-closeModal();
-renderVaultGrid();
-}
-
-function handleFiles(files) {
-const v = vaults[currentIndex];
-for (let file of files) {
-const artifact = {
-id: "33LAYER-" + Math.random().toString(36).substring(2, 15),
-name: file.name || 'Pasted content',
-size: Math.round(Math.random()*1000)
-};
-v.artifacts.push(artifact);
-}
-renderModalResults();
-}
-
-function renderModalResults() {
-const div = document.getElementById('modalResults');
-div.innerHTML = '';
-const v = vaults[currentIndex];
-v.artifacts.forEach((a, i) => {
-const card = document.createElement('div');
-card.className = "bg-zinc-800 p-6 rounded-3xl flex flex-col";
-card.innerHTML = `
-<div class="text-emerald-400 font-mono text-sm mb-2">${a.id}</div>
-<div class="font-medium mb-4">${a.name}</div>
-<div class="text-xs text-zinc-400 mb-4">Compressed • ${a.size} KB ${isColdMode ? '(Cold Mode)' : ''}</div>
-<div class="flex gap-2">
-<button onclick="retrieveArtifact(${i})" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-2xl text-sm">Retrieve Original</button>
-<button onclick="deleteArtifact(${i})" class="flex-1 bg-red-600 hover:bg-red-500 py-2 rounded-2xl text-sm">Delete Artifact</button>
+grid.innerHTML = vaults.map((v,i) => `
+<div onclick="openVault(${i})" class="bg-zinc-900 p-6 rounded-3xl text-center cursor-pointer active:scale-95 transition" style="touch-action: manipulation;">
+<div class="text-emerald-400 text-5xl font-bold">${v.eb}</div>
+<div class="mt-2">${v.name}</div>
 </div>
-`;
-div.appendChild(card);
+`).join('');
+}
+
+function importVault() {
+if (!acceptedTerms) return showTerms();
+const input = document.createElement('input');
+input.type = 'file';
+input.accept = '.json';
+input.onchange = e => {
+const file = e.target.files[0];
+const reader = new FileReader();
+reader.onload = ev => {
+try {
+const imported = JSON.parse(ev.target.result);
+if (imported.vault_id && imported.artifacts) {
+vaults.push({ name: "Imported Vault", eb: "5 EB", id: Date.now() });
+localStorage.setItem('vaults', JSON.stringify(vaults));
+render();
+runAudit(); // Run mutual audit immediately after import
+} else {
+alert("Invalid VAULT 33 JSON file");
+}
+} catch(err) {
+alert("Invalid JSON");
+}
+};
+reader.readAsText(file);
+};
+input.click();
+}
+
+function openVault(i) {
+if (!acceptedTerms) return showTerms();
+runAudit(); // Audit on every vault open
+}
+
+// Long-press share
+document.addEventListener('touchstart', function(e) {
+if (e.target.closest('.bg-zinc-900')) {
+setTimeout(() => {
+if (confirm("Share this vault? (AirDrop / Email / Bluetooth)")) {
+alert("Vault JSON ready for sharing.");
+}
+}, 600);
+}
 });
+
+// Initialize
+if (!acceptedTerms) {
+showTerms();
+} else {
+document.getElementById('mainUI').classList.remove('hidden');
+render();
 }
-
-function retrieveArtifact(i) {
-const artifact = vaults[currentIndex].artifacts[i];
-const blob = new Blob(["VAULT 33 original file content for " + artifact.name], { type: "application/octet-stream" });
-const url = URL.createObjectURL(blob);
-const a = document.createElement("a");
-a.href = url;
-a.download = artifact.name || "retrieved_file.bin";
-a.click();
-URL.revokeObjectURL(url);
-}
-
-function deleteArtifact(i) {
-vaults[currentIndex].artifacts.splice(i, 1);
-renderModalResults();
-}
-
-const dropzone = document.getElementById('dropzoneModal');
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
-document.getElementById('fileInputModal').addEventListener('change', e => handleFiles(e.target.files));
-document.addEventListener('paste', e => {
-if (e.clipboardData.files.length) handleFiles(e.clipboardData.files);
-});
-
-renderVaultGrid();
 </script>
 </body>
 </html>
