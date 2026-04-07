@@ -5,11 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>VAULT 33</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { background: #09090b; font-family: system-ui, -apple-system, sans-serif; }
+.screen { display: none; }
+.screen.active { display: flex; }
+</style>
 </head>
-<body class="bg-[#09090b] text-white min-h-screen p-4">
+<body class="bg-[#09090b] text-white min-h-screen">
 
 <!-- TERMS SCREEN -->
-<div id="termsScreen" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[99999]">
+<div id="termsScreen" class="screen active fixed inset-0 bg-black/95 flex items-center justify-center z-[99999]">
 <div class="max-w-md mx-4 bg-zinc-900 rounded-3xl p-8 text-center">
 <h1 class="text-4xl font-bold mb-6">VAULT 33 User Agreement</h1>
 <div class="text-left text-sm leading-relaxed max-h-80 overflow-y-auto mb-8 pr-2">
@@ -24,8 +29,8 @@
 </div>
 </div>
 
-<!-- AUDIT SCREEN -->
-<div id="auditScreen" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[99999] hidden">
+<!-- AUDIT SCREEN (runs once only) -->
+<div id="auditScreen" class="screen fixed inset-0 bg-black/95 flex items-center justify-center z-[99999]">
 <div class="max-w-md mx-4 bg-zinc-900 rounded-3xl p-8 text-center">
 <h2 class="text-3xl font-bold mb-6 text-emerald-400">Vault Audit Complete</h2>
 <div class="text-left space-y-5 mb-10">
@@ -40,8 +45,7 @@
 </div>
 
 <!-- MAIN UI -->
-<div id="mainUI" class="hidden max-w-7xl mx-auto">
-<div class="p-6">
+<div id="mainUI" class="screen hidden max-w-7xl mx-auto p-6">
 <h1 class="text-5xl font-bold">VAULT 33</h1>
 <p class="text-emerald-400 text-xl">Mobile • Persistent • Transferable</p>
 
@@ -51,7 +55,6 @@
 </div>
 
 <div id="vaultGrid" class="grid grid-cols-2 gap-6"></div>
-</div>
 </div>
 
 <!-- VAULT MODAL -->
@@ -65,7 +68,7 @@
 <div class="mb-6">
 <div class="flex justify-between text-xs mb-2"><span>5 EB total</span><span id="modalStorageText" class="font-mono"></span></div>
 <div class="h-3 bg-zinc-800 rounded-3xl overflow-hidden">
-<div id="modalUsedBar" class="h-3 bg-emerald-500 transition-all" style="width:0%"></div>
+<div id="modalUsedBar" class="h-3 bg-emerald-500 transition-all"></div>
 </div>
 </div>
 
@@ -103,7 +106,7 @@ grid.innerHTML = vaults.map((v, i) => `
 }
 
 function importVault() {
-if (!acceptedTerms) return document.getElementById('termsScreen').style.display = 'flex';
+if (!acceptedTerms) return;
 const input = document.createElement('input');
 input.type = 'file';
 input.accept = '.json';
@@ -164,7 +167,7 @@ list.innerHTML = (vault.artifacts || []).map((a, idx) => `
 function previewArtifact(idx) {
 const artifact = vaults[currentVaultIndex].artifacts[idx];
 if (confirm(`View ${artifact.name} now?`)) {
-alert(`✅ ${artifact.name} opened instantly (zero-delay)`);
+alert(`✅ ${artifact.name} opened instantly (zero-delay reproduction)`);
 }
 }
 
@@ -183,14 +186,14 @@ renderVaultGrid();
 function acceptTerms() {
 localStorage.setItem('vault33TermsAccepted', 'true');
 acceptedTerms = true;
-document.getElementById('termsScreen').style.display = 'none';
+document.getElementById('termsScreen').classList.remove('active');
 document.getElementById('mainUI').classList.remove('hidden');
 renderVaultGrid();
 }
 
 // Initialize
 if (!acceptedTerms) {
-document.getElementById('termsScreen').style.display = 'flex';
+document.getElementById('termsScreen').classList.add('active');
 } else {
 document.getElementById('mainUI').classList.remove('hidden');
 renderVaultGrid();
