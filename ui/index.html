@@ -106,7 +106,7 @@ if (imported.vault_id && imported.artifacts) {
 vaults.push({ name: "Imported Vault", eb: "5 EB", id: Date.now() });
 localStorage.setItem('vaults', JSON.stringify(vaults));
 render();
-runAudit(); // Run mutual audit immediately after import
+runAudit(); // Mutual audit after import
 } else {
 alert("Invalid VAULT 33 JSON file");
 }
@@ -135,7 +135,6 @@ alert("Vault JSON ready for sharing.");
 }
 });
 
-// Initialize
 if (!acceptedTerms) {
 showTerms();
 } else {
