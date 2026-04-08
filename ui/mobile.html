@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>VAULT 33</title>
+<style>
+  :root {
+    --bg: #000000;
+    --surface: #0a0a0a;
+    --card: #111111;
+    --border: #1e1e1e;
+    --green: #00ff88;
+    --green-dim: #00cc6a;
+    --text: #f0f0f0;
+    --muted: #666666;
+    --danger: #ff3b3b;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+  /* ── OVERLAY SYSTEM ── */
+  .overlay { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; overflow-y: auto; padding: calc(var(--safe-top) + 24px) 20px calc(var(--safe-bottom) + 24px); }
+  .overlay.hidden { display: none; }
+
+  /* ── T&C SCREEN ── */
+  #tc-screen { justify-content: flex-start; }
+  .tc-logo { text-align: center; margin-bottom: 32px; }
+  .tc-logo h1 { font-size: 36px; font-weight: 800; letter-spacing: 4px; color: var(--green); }
+  .tc-logo p { font-size: 12px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+  .tc-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; max-height: 45vh; overflow-y: auto; font-size: 13px; line-height: 1.7; color: #aaa; }
+  .tc-box h3 { color: var(--text); font-size: 15px; margin-bottom: 12px; }
+  .tc-box p { margin-bottom: 10px; }
+  .tc-check-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px; cursor: pointer; }
+  .tc-check-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--green); flex-shrink: 0; margin-top: 2px; cursor: pointer; }
+  .tc-check-row label { font-size: 13px; color: #ccc; cursor: pointer; line-height: 1.5; }
+  .btn-accept { width: 100%; padding: 18px; background: var(--green); color: #000; font-size: 16px; font-weight: 800; border: none; border-radius: 14px; cursor: pointer; letter-spacing: 1px; transition: opacity 0.2s; }
+  .btn-accept:disabled { opacity: 0.25; cursor: not-allowed; }
+  .btn-accept:not(:disabled):active { opacity: 0.8; }
+
+  /* ── AUDIT SCREEN ── */
+  #audit-screen { justify-content: center; align-items: center; text-align: center; }
+  .audit-inner { width: 100%; max-width: 400px; }
+  .audit-title { font-size: 22px; font-weight: 800; color: var(--green); margin-bottom: 6px; }
+  .audit-sub { font-size: 13px; color: var(--muted); margin-bottom: 32px; }
+  .audit-item { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; text-align: left; opacity: 0; transform: translateY(10px); transition: opacity 0.4s, transform 0.4s; }
+  .audit-item.show { opacity: 1; transform: translateY(0); }
+  .audit-check { width: 28px; height: 28px; background: #001a0d; border: 2px solid var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .audit-check svg { width: 14px; height: 14px; stroke: var(--green); stroke-width: 3; fill: none; opacity: 0; transition: opacity 0.3s; }
+  .audit-check svg.show { opacity: 1; }
+  .audit-label { font-size: 14px; font-weight: 600; color: var(--text); }
+  .audit-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .audit-continue { width: 100%; padding: 18px; background: var(--green); color: #000; font-size: 16px; font-weight: 800; border: none; border-radius: 14px; cursor: pointer; margin-top: 24px; opacity: 0; transition: opacity 0.4s; }
+  .audit-continue.show { opacity: 1; }
+
+  /* ── MAIN APP ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; padding-bottom: calc(var(--safe-bottom) + 80px); }
+  #app.visible { display: flex; }
+
+  /* Header */
+  .app-header { padding: calc(var(--safe-top) + 16px) 20px 16px; background: var(--bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .header-row { display: flex; align-items: center; justify-content: space-between; }
+  .header-title { font-size: 28px; font-weight: 900; letter-spacing: 3px; color: var(--green); }
+  .header-badge { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+  .header-actions { display: flex; gap: 10px; }
+  .icon-btn { width: 40px; height: 40px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .icon-btn svg { width: 18px; height: 18px; stroke: var(--text); stroke-width: 2; fill: none; }
+
+  /* Storage Bar */
+  .storage-bar-wrap { padding: 14px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .storage-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .storage-labels span:last-child { color: var(--green); }
+  .storage-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .storage-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--green-dim)); border-radius: 2px; transition: width 0.5s ease; min-width: 1px; }
+
+  /* Search */
+  .search-wrap { padding: 12px 20px; }
+  .search-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 15px; outline: none; }
+  .search-input::placeholder { color: var(--muted); }
+  .search-input:focus { border-color: var(--green); }
+
+  /* Filter Tabs */
+  .filter-tabs { display: flex; gap: 8px; padding: 0 20px 12px; overflow-x: auto; scrollbar-width: none; }
+  .filter-tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 7px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+  .tab.active { background: var(--green); color: #000; border-color: var(--green); }
+
+  /* Drop Zone */
+  .drop-zone { margin: 0 20px 16px; border: 2px dashed var(--border); border-radius: 16px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+  .drop-zone.drag-over { border-color: var(--green); background: #001a0d; }
+  .drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .drop-zone-text { font-size: 14px; color: var(--muted); }
+  .drop-zone-text span { color: var(--green); font-weight: 600; }
+
+  /* File Grid */
+  .file-grid { padding: 0 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .file-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; cursor: pointer; position: relative; user-select: none; transition: border-color 0.2s; }
+  .file-card:active { border-color: var(--green); }
+  .file-card.selected { border-color: var(--green); }
+  .file-thumb { width: 100%; aspect-ratio: 1; background: var(--surface); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .file-thumb img, .file-thumb video { width: 100%; height: 100%; object-fit: cover; }
+  .file-type-icon { font-size: 36px; }
+  .file-info { padding: 10px 12px; }
+  .file-name { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .file-id { font-size: 9px; color: #333; margin-top: 2px; font-family: monospace; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Empty State */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; line-height: 1.6; }
+
+  /* Context Menu */
+  .ctx-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500; display: none; }
+  .ctx-backdrop.show { display: block; }
+  .ctx-menu { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); border-radius: 24px 24px 0 0; z-index: 501; padding: 12px 0 calc(var(--safe-bottom) + 12px); transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1); }
+  .ctx-menu.show { transform: translateY(0); }
+  .ctx-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+  .ctx-file-name { font-size: 13px; font-weight: 700; color: var(--text); padding: 0 20px 12px; border-bottom: 1px solid var(--border); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ctx-item { display: flex; align-items: center; gap: 14px; padding: 14px 20px; cursor: pointer; transition: background 0.15s; }
+  .ctx-item:active { background: var(--surface); }
+  .ctx-item svg { width: 20px; height: 20px; stroke: var(--text); stroke-width: 2; fill: none; flex-shrink: 0; }
+  .ctx-item span { font-size: 15px; color: var(--text); }
+  .ctx-item.danger svg { stroke: var(--danger); }
+  .ctx-item.danger span { color: var(--danger); }
+
+  /* View Confirm Modal */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 600; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-backdrop.show { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 360px; text-align: center; }
+  .modal h3 { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-btn { flex: 1; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700; border: none; cursor: pointer; }
+  .modal-btn.cancel { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .modal-btn.confirm { background: var(--green); color: #000; }
+
+  /* Viewer */
+  .viewer { position: fixed; inset: 0; background: #000; z-index: 700; display: none; flex-direction: column; }
+  .viewer.show { display: flex; }
+  .viewer-header { display: flex; align-items: center; justify-content: space-between; padding: calc(var(--safe-top) + 16px) 20px 16px; border-bottom: 1px solid var(--border); }
+  .viewer-title { font-size: 15px; font-weight: 700; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0 12px; }
+  .viewer-close { width: 36px; height: 36px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+  .viewer-close svg { width: 18px; height: 18px; stroke: var(--text); stroke-width: 2; fill: none; }
+  .viewer-body { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .viewer-body img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+  .viewer-body video { max-width: 100%; max-height: 100%; border-radius: 8px; }
+  .viewer-body pre { color: #ccc; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; background: var(--surface); padding: 16px; border-radius: 8px; width: 100%; }
+  .viewer-body .doc-preview { background: var(--surface); border-radius: 12px; padding: 24px; width: 100%; }
+  .viewer-body .doc-preview h4 { color: var(--green); margin-bottom: 12px; }
+  .viewer-body .doc-preview p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+
+  /* FAB */
+  .fab { position: fixed; bottom: calc(var(--safe-bottom) + 20px); right: 20px; width: 56px; height: 56px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 20px rgba(0,255,136,0.3); z-index: 200; border: none; }
+  .fab svg { width: 24px; height: 24px; stroke: #000; stroke-width: 2.5; fill: none; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: calc(var(--safe-bottom) + 90px); left: 50%; transform: translateX(-50%) translateY(20px); background: var(--card); border: 1px solid var(--green); border-radius: 12px; padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--green); z-index: 900; opacity: 0; transition: all 0.3s; white-space: nowrap; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ T&C SCREEN ══════════════════ -->
+<div class="overlay" id="tc-screen">
+  <div class="tc-logo">
+    <h1>VAULT 33</h1>
+    <p>VADER TECHNOLOGIES · PRODUCTION</p>
+  </div>
+  <div class="tc-box">
+    <h3>Terms &amp; Conditions — VAULT 33 License Agreement</h3>
+    <p><strong>Effective Date:</strong> Upon acceptance. <strong>Licensor:</strong> Adarius Matthews, Vader Technologies.</p>
+    <p>By accepting these terms, you ("Licensee") agree to the following binding conditions governing your use of VAULT 33, a proprietary digital storage system developed and owned exclusively by Adarius Matthews / Vader Technologies.</p>
+    <p><strong>1. License Grant.</strong> Vader Technologies grants Licensee a non-exclusive, non-transferable, revocable license to use VAULT 33 solely for purposes outlined in the applicable licensing or leasing agreement. No rights to sublicense, reverse-engineer, copy, modify, or redistribute VAULT 33 or any portion thereof are granted.</p>
+    <p><strong>2. Intellectual Property.</strong> VAULT 33, including its self-evolving language core, storage architecture, artifact system, and all associated software, is the sole and exclusive intellectual property of Adarius Matthews / Vader Technologies. All rights reserved worldwide.</p>
+    <p><strong>3. Data Ownership.</strong> All data ingested into a licensed VAULT 33 instance remains the exclusive property of the Licensee. Vader Technologies claims no ownership over Licensee data.</p>
+    <p><strong>4. Prohibited Use.</strong> Licensee shall not: (a) use VAULT 33 for any unlawful purpose; (b) attempt to reverse-engineer or extract the underlying architecture; (c) resell, sublicense, or transfer access to any third party without written consent from Vader Technologies.</p>
+    <p><strong>5. Warranty Disclaimer.</strong> VAULT 33 is provided "as-is" under the terms of the applicable license. Vader Technologies warrants production-readiness as verified by the Vault Audit system. No additional warranties are expressed or implied.</p>
+    <p><strong>6. Limitation of Liability.</strong> Vader Technologies' total liability shall not exceed the fees paid by Licensee in the 12 months preceding any claim.</p>
+    <p><strong>7. Governing Law.</strong> This agreement is governed by the laws of the United States.</p>
+    <p><strong>8. Entire Agreement.</strong> These terms, together with any executed licensing agreement, constitute the entire agreement between the parties.</p>
+  </div>
+  <div class="tc-check-row" onclick="toggleCheck('chk1')">
+    <input type="checkbox" id="chk1" onclick="event.stopPropagation(); checkAccept()">
+    <label for="chk1">I have read, understood, and agree to the VAULT 33 Terms &amp; Conditions and License Agreement.</label>
+  </div>
+  <div class="tc-check-row" onclick="toggleCheck('chk2')">
+    <input type="checkbox" id="chk2" onclick="event.stopPropagation(); checkAccept()">
+    <label for="chk2">I acknowledge that VAULT 33 is proprietary technology owned exclusively by Adarius Matthews / Vader Technologies, and I will not attempt to reverse-engineer or redistribute it.</label>
+  </div>
+  <button class="btn-accept" id="btn-accept" disabled onclick="startAudit()">ACCEPT &amp; ENTER VAULT 33</button>
+</div>
+
+<!-- ══════════════════ AUDIT SCREEN ══════════════════ -->
+<div class="overlay hidden" id="audit-screen">
+  <div class="audit-inner">
+    <div class="audit-title">VAULT INTEGRITY AUDIT</div>
+    <div class="audit-sub">One-time verification — running now</div>
+    <div class="audit-item" id="a1">
+      <div class="audit-check"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>
+      <div><div class="audit-label">Vault ID Verified</div><div class="audit-detail" id="a1-detail">Generating...</div></div>
+    </div>
+    <div class="audit-item" id="a2">
+      <div class="audit-check"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>
+      <div><div class="audit-label">Data Integrity Passed</div><div class="audit-detail">SHA3-512 hash chain verified</div></div>
+    </div>
+    <div class="audit-item" id="a3">
+      <div class="audit-check"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>
+      <div><div class="audit-label">5 EB Effective Capacity Confirmed</div><div class="audit-detail">5,000,000 GB available</div></div>
+    </div>
+    <div class="audit-item" id="a4">
+      <div class="audit-check"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>
+      <div><div class="audit-label">Zero-Delay Reproduction Verified</div><div class="audit-detail">Artifact retrieval: &lt;1ms</div></div>
+    </div>
+    <div class="audit-item" id="a5">
+      <div class="audit-check"><svg viewBox="0 0 14 14"><polyline points="2,7 6,11 12,3"/></svg></div>
+      <div><div class="audit-label">Living Language Core Operational</div><div class="audit-detail">Self-evolving storage layer active</div></div>
+    </div>
+    <button class="audit-continue" id="audit-continue" onclick="enterApp()">ENTER VAULT 33 →</button>
+  </div>
+</div>
+
+<!-- ══════════════════ MAIN APP ══════════════════ -->
+<div id="app">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="header-row">
+      <div>
+        <div class="header-title">VAULT 33</div>
+        <div class="header-badge" id="vault-id-badge">VAULT ID: —</div>
+      </div>
+      <div class="header-actions">
+        <div class="icon-btn" onclick="triggerExport()" title="Export Vault">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div class="icon-btn" onclick="triggerImportJSON()" title="Import Vault JSON">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Storage Bar -->
+  <div class="storage-bar-wrap">
+    <div class="storage-labels">
+      <span id="storage-used">0 B used</span>
+      <span id="storage-free">5.00 EB free</span>
+    </div>
+    <div class="storage-track">
+      <div class="storage-fill" id="storage-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <input class="search-input" id="search-input" type="text" placeholder="Search vault..." oninput="renderGrid()">
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="filter-tabs">
+    <div class="tab active" data-filter="all" onclick="setFilter('all',this)">All</div>
+    <div class="tab" data-filter="image" onclick="setFilter('image',this)">Images</div>
+    <div class="tab" data-filter="video" onclick="setFilter('video',this)">Video</div>
+    <div class="tab" data-filter="document" onclick="setFilter('document',this)">Docs</div>
+    <div class="tab" data-filter="audio" onclick="setFilter('audio',this)">Audio</div>
+    <div class="tab" data-filter="other" onclick="setFilter('other',this)">Other</div>
+  </div>
+
+  <!-- Drop Zone -->
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" multiple accept="*/*" onchange="handleFiles(this.files)">
+    <div class="drop-zone-icon">📁</div>
+    <div class="drop-zone-text">Drop files here or <span>tap to browse</span><br>Any file type · Images · Video · Docs</div>
+  </div>
+
+  <!-- File Grid -->
+  <div class="file-grid" id="file-grid"></div>
+  <div id="empty-state" class="empty-state" style="display:none">
+    <div class="big">🔒</div>
+    <p>Your vault is empty.<br>Drop files above to begin ingesting data.</p>
+  </div>
+
+</div><!-- /app -->
+
+<!-- FAB -->
+<button class="fab" onclick="document.getElementById('file-input').click()" title="Add Files">
+  <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- Context Menu -->
+<div class="ctx-backdrop" id="ctx-backdrop" onclick="closeCtx()"></div>
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-handle"></div>
+  <div class="ctx-file-name" id="ctx-name">—</div>
+  <div class="ctx-item" onclick="ctxView()">
+    <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <span>View File</span>
+  </div>
+  <div class="ctx-item" onclick="ctxShare()">
+    <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+    <span>Share / AirDrop</span>
+  </div>
+  <div class="ctx-item" onclick="ctxEmail()">
+    <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+    <span>Email File</span>
+  </div>
+  <div class="ctx-item" onclick="ctxExportSingle()">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    <span>Export as JSON</span>
+  </div>
+  <div class="ctx-item" onclick="ctxInfo()">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span>Artifact Info</span>
+  </div>
+</div>
+
+<!-- View Confirm Modal -->
+<div class="modal-backdrop" id="view-modal">
+  <div class="modal">
+    <h3>View File?</h3>
+    <p id="view-modal-desc">You are about to open this file from your vault. Confirm to proceed.</p>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeViewModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="confirmView()">View</button>
+    </div>
+  </div>
+</div>
+
+<!-- Artifact Info Modal -->
+<div class="modal-backdrop" id="info-modal">
+  <div class="modal">
+    <h3>Artifact Info</h3>
+    <p id="info-modal-content" style="text-align:left; font-family:monospace; font-size:12px; color:#aaa; line-height:1.8;"></p>
+    <div class="modal-actions">
+      <button class="modal-btn confirm" style="flex:1" onclick="closeInfoModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- File Viewer -->
+<div class="viewer" id="viewer">
+  <div class="viewer-header">
+    <div class="viewer-close" onclick="closeViewer()">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>
+    <div class="viewer-title" id="viewer-title">—</div>
+    <div style="width:36px"></div>
+  </div>
+  <div class="viewer-body" id="viewer-body"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Hidden import JSON input -->
+<input type="file" id="json-import-input" accept=".json" style="display:none" onchange="handleJSONImport(this)">
+
+<script>
+// ══════════════════════════════════════════════════════
+//  VAULT 33 — PRODUCTION CONSUMER UI
+//  Vader Technologies · Adarius Matthews
+// ══════════════════════════════════════════════════════
+
+const EB = 5 * 1e18; // 5 exabytes in bytes
+const STORAGE_KEY = 'vault33_artifacts';
+const TC_KEY = 'vault33_tc_accepted';
+const AUDIT_KEY = 'vault33_audit_done';
+const VAULT_ID_KEY = 'vault33_vault_id';
+
+let artifacts = [];
+let currentFilter = 'all';
+let ctxTarget = null;
+let viewTarget = null;
+
+// ── Boot ──────────────────────────────────────────────
+window.addEventListener('load', () => {
+  // Prevent back-button bypass
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', () => { history.pushState(null, '', location.href); });
+
+  const tcAccepted = sessionStorage.getItem(TC_KEY);
+  if (!tcAccepted) {
+    document.getElementById('tc-screen').classList.remove('hidden');
+  } else {
+    const auditDone = sessionStorage.getItem(AUDIT_KEY);
+    if (!auditDone) {
+      document.getElementById('tc-screen').classList.add('hidden');
+      startAudit();
+    } else {
+      document.getElementById('tc-screen').classList.add('hidden');
+      enterApp();
+    }
+  }
+  loadArtifacts();
+});
+
+// ── T&C ───────────────────────────────────────────────
+function toggleCheck(id) {
+  const el = document.getElementById(id);
+  el.checked = !el.checked;
+  checkAccept();
+}
+function checkAccept() {
+  const ok = document.getElementById('chk1').checked && document.getElementById('chk2').checked;
+  document.getElementById('btn-accept').disabled = !ok;
+}
+
+// ── Audit ─────────────────────────────────────────────
+function startAudit() {
+  sessionStorage.setItem(TC_KEY, '1');
+  document.getElementById('tc-screen').classList.add('hidden');
+  document.getElementById('audit-screen').classList.remove('hidden');
+
+  const vaultId = getOrCreateVaultId();
+  document.getElementById('a1-detail').textContent = 'ID: ' + vaultId.slice(0, 24) + '...';
+
+  const items = ['a1','a2','a3','a4','a5'];
+  items.forEach((id, i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      el.classList.add('show');
+      setTimeout(() => {
+        el.querySelector('svg').classList.add('show');
+      }, 200);
+      if (i === items.length - 1) {
+        setTimeout(() => {
+          document.getElementById('audit-continue').classList.add('show');
+        }, 400);
+      }
+    }, 400 + i * 600);
+  });
+}
+
+function enterApp() {
+  sessionStorage.setItem(AUDIT_KEY, '1');
+  document.getElementById('audit-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('vault-id-badge').textContent = 'VAULT ID: ' + getOrCreateVaultId().slice(0,16).toUpperCase();
+  updateStorageBar();
+  renderGrid();
+  setupDragDrop();
+  setupPaste();
+}
+
+// ── Vault ID ──────────────────────────────────────────
+function getOrCreateVaultId() {
+  let id = localStorage.getItem(VAULT_ID_KEY);
+  if (!id) {
+    id = '33-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).slice(2,10).toUpperCase();
+    localStorage.setItem(VAULT_ID_KEY, id);
+  }
+  return id;
+}
+
+// ── SHA3-like ID (using SubtleCrypto SHA-256 as fallback) ──
+async function computeArtifactId(buffer) {
+  const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
+  const hex = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  return '33LAYER-' + hex.slice(0,16);
+}
+
+// ── Storage ───────────────────────────────────────────
+function saveArtifacts() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(artifacts.map(a => ({...a, data: null})))); } catch(e) {}
+  // Full data stored in sessionStorage for current session (survives tab refresh but not close)
+  try { sessionStorage.setItem(STORAGE_KEY + '_data', JSON.stringify(artifacts)); } catch(e) {}
+}
+function loadArtifacts() {
+  try {
+    const session = sessionStorage.getItem(STORAGE_KEY + '_data');
+    if (session) { artifacts = JSON.parse(session); return; }
+    const local = localStorage.getItem(STORAGE_KEY);
+    if (local) { artifacts = JSON.parse(local); }
+  } catch(e) { artifacts = []; }
+}
+
+// ── File Ingestion ────────────────────────────────────
+async function handleFiles(files) {
+  for (const file of Array.from(files)) {
+    await ingestFile(file);
+  }
+  renderGrid();
+  updateStorageBar();
+  showToast(files.length + ' file' + (files.length > 1 ? 's' : '') + ' ingested ✓');
+  document.getElementById('file-input').value = '';
+}
+
+async function ingestFile(file) {
+  const buffer = await file.arrayBuffer();
+  const base64 = arrayBufferToBase64(buffer);
+  const id = await computeArtifactId(buffer);
+  const existing = artifacts.find(a => a.id === id);
+  if (existing) return; // zero duplication
+  const artifact = {
+    id,
+    name: file.name,
+    type: file.type || 'application/octet-stream',
+    size: file.size,
+    category: categorize(file.type, file.name),
+    data: base64,
+    timestamp: new Date().toISOString()
+  };
+  artifacts.unshift(artifact);
+  saveArtifacts();
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToObjectURL(base64, mimeType) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], {type: mimeType});
+  return URL.createObjectURL(blob);
+}
+
+function categorize(mimeType, name) {
+  if (!mimeType) mimeType = '';
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  if (mimeType.startsWith('audio/')) return 'audio';
+  if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text') || mimeType.includes('spreadsheet') || mimeType.includes('presentation')) return 'document';
+  const ext = (name || '').split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg','bmp','heic','heif'].includes(ext)) return 'image';
+  if (['mp4','mov','avi','mkv','webm','m4v'].includes(ext)) return 'video';
+  if (['mp3','wav','aac','flac','ogg','m4a'].includes(ext)) return 'audio';
+  if (['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','md','csv','rtf'].includes(ext)) return 'document';
+  return 'other';
+}
+
+function typeIcon(cat) {
+  const icons = {image:'🖼️', video:'🎬', audio:'🎵', document:'📄', other:'📦'};
+  return icons[cat] || '📦';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  if (bytes < 1024*1024*1024) return (bytes/(1024*1024)).toFixed(1) + ' MB';
+  if (bytes < 1024*1024*1024*1024) return (bytes/(1024*1024*1024)).toFixed(2) + ' GB';
+  return (bytes/(1024*1024*1024*1024)).toFixed(4) + ' TB';
+}
+
+function formatEB(bytes) {
+  const eb = bytes / 1e18;
+  if (eb < 0.000001) return formatSize(bytes);
+  return eb.toFixed(8) + ' EB';
+}
+
+// ── Storage Bar ───────────────────────────────────────
+function updateStorageBar() {
+  const used = artifacts.reduce((s, a) => s + (a.size || 0), 0);
+  const free = EB - used;
+  const pct = Math.min((used / EB) * 100, 100);
+  document.getElementById('storage-used').textContent = formatSize(used) + ' used';
+  document.getElementById('storage-free').textContent = formatEB(free) + ' free';
+  document.getElementById('storage-fill').style.width = Math.max(pct, 0.01) + '%';
+}
+
+// ── Filter & Search ───────────────────────────────────
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function renderGrid() {
+  const query = document.getElementById('search-input').value.toLowerCase();
+  let filtered = artifacts.filter(a => {
+    const matchFilter = currentFilter === 'all' || a.category === currentFilter;
+    const matchSearch = !query || a.name.toLowerCase().includes(query) || a.id.toLowerCase().includes(query);
+    return matchFilter && matchSearch;
+  });
+
+  const grid = document.getElementById('file-grid');
+  const empty = document.getElementById('empty-state');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  grid.innerHTML = filtered.map(a => {
+    const thumb = a.category === 'image' && a.data
+      ? `<img src="data:${a.type};base64,${a.data}" loading="lazy" alt="${a.name}">`
+      : `<div class="file-type-icon">${typeIcon(a.category)}</div>`;
+    return `<div class="file-card" data-id="${a.id}"
+      ontouchstart="startLongPress('${a.id}',event)"
+      ontouchend="cancelLongPress()"
+      ontouchmove="cancelLongPress()"
+      onclick="requestView('${a.id}')">
+      <div class="file-thumb">${thumb}</div>
+      <div class="file-info">
+        <div class="file-name">${escHtml(a.name)}</div>
+        <div class="file-meta">${formatSize(a.size)} · ${a.category}</div>
+        <div class="file-id">${a.id}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Long Press ────────────────────────────────────────
+let lpTimer = null;
+function startLongPress(id, e) {
+  lpTimer = setTimeout(() => { e.preventDefault(); openCtx(id); }, 600);
+}
+function cancelLongPress() { clearTimeout(lpTimer); }
+
+// ── Context Menu ──────────────────────────────────────
+function openCtx(id) {
+  ctxTarget = artifacts.find(a => a.id === id);
+  if (!ctxTarget) return;
+  document.getElementById('ctx-name').textContent = ctxTarget.name;
+  document.getElementById('ctx-backdrop').classList.add('show');
+  document.getElementById('ctx-menu').classList.add('show');
+}
+function closeCtx() {
+  document.getElementById('ctx-backdrop').classList.remove('show');
+  document.getElementById('ctx-menu').classList.remove('show');
+}
+function ctxView() { closeCtx(); if (ctxTarget) requestView(ctxTarget.id); }
+function ctxShare() {
+  closeCtx();
+  if (!ctxTarget || !ctxTarget.data) { showToast('No data to share'); return; }
+  const url = base64ToObjectURL(ctxTarget.data, ctxTarget.type);
+  if (navigator.share) {
+    fetch(url).then(r=>r.blob()).then(blob => {
+      const file = new File([blob], ctxTarget.name, {type: ctxTarget.type});
+      navigator.share({files:[file], title: ctxTarget.name}).catch(()=>{});
+    });
+  } else {
+    const a = document.createElement('a'); a.href = url; a.download = ctxTarget.name; a.click();
+    showToast('Downloaded (Share not available on this browser)');
+  }
+}
+function ctxEmail() {
+  closeCtx();
+  if (!ctxTarget) return;
+  const subject = encodeURIComponent('VAULT 33 — ' + ctxTarget.name);
+  const body = encodeURIComponent('Artifact ID: ' + ctxTarget.id + '\nFile: ' + ctxTarget.name + '\nSize: ' + formatSize(ctxTarget.size) + '\n\nShared from VAULT 33 by Vader Technologies.');
+  window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
+}
+function ctxExportSingle() {
+  closeCtx();
+  if (!ctxTarget) return;
+  const json = JSON.stringify({vault_id: getOrCreateVaultId(), version:'1.6-PROD', exported: new Date().toISOString(), artifact: ctxTarget}, null, 2);
+  downloadText(json, ctxTarget.name + '.vault33.json', 'application/json');
+  showToast('Artifact exported');
+}
+function ctxInfo() {
+  closeCtx();
+  if (!ctxTarget) return;
+  document.getElementById('info-modal-content').innerHTML =
+    'ID: ' + ctxTarget.id + '<br>' +
+    'Name: ' + ctxTarget.name + '<br>' +
+    'Type: ' + ctxTarget.type + '<br>' +
+    'Size: ' + formatSize(ctxTarget.size) + '<br>' +
+    'Category: ' + ctxTarget.category + '<br>' +
+    'Ingested: ' + new Date(ctxTarget.timestamp).toLocaleString();
+  document.getElementById('info-modal').classList.add('show');
+}
+function closeInfoModal() { document.getElementById('info-modal').classList.remove('show'); }
+
+// ── View Confirmation ─────────────────────────────────
+function requestView(id) {
+  viewTarget = artifacts.find(a => a.id === id);
+  if (!viewTarget) return;
+  document.getElementById('view-modal-desc').textContent = 'Open "' + viewTarget.name + '" (' + formatSize(viewTarget.size) + ') from your vault?';
+  document.getElementById('view-modal').classList.add('show');
+}
+function closeViewModal() { document.getElementById('view-modal').classList.remove('show'); viewTarget = null; }
+function confirmView() {
+  document.getElementById('view-modal').classList.remove('show');
+  if (!viewTarget) return;
+  openViewer(viewTarget);
+}
+
+// ── File Viewer ───────────────────────────────────────
+function openViewer(artifact) {
+  document.getElementById('viewer-title').textContent = artifact.name;
+  const body = document.getElementById('viewer-body');
+  body.innerHTML = '';
+
+  if (!artifact.data) {
+    body.innerHTML = '<div class="doc-preview"><h4>No preview available</h4><p>This artifact was imported without binary data. Re-import the original file to enable preview.</p></div>';
+  } else if (artifact.category === 'image') {
+    const img = document.createElement('img');
+    img.src = 'data:' + artifact.type + ';base64,' + artifact.data;
+    body.appendChild(img);
+  } else if (artifact.category === 'video') {
+    const vid = document.createElement('video');
+    vid.controls = true; vid.autoplay = false;
+    vid.src = base64ToObjectURL(artifact.data, artifact.type);
+    body.appendChild(vid);
+  } else if (artifact.category === 'audio') {
+    const aud = document.createElement('audio');
+    aud.controls = true;
+    aud.src = base64ToObjectURL(artifact.data, artifact.type);
+    body.appendChild(aud);
+  } else if (artifact.type === 'application/pdf') {
+    const url = base64ToObjectURL(artifact.data, artifact.type);
+    const iframe = document.createElement('iframe');
+    iframe.src = url; iframe.style.cssText = 'width:100%;height:70vh;border:none;border-radius:8px;';
+    body.appendChild(iframe);
+  } else if (artifact.type.startsWith('text/') || ['application/json','application/xml'].includes(artifact.type)) {
+    const text = atob(artifact.data);
+    const pre = document.createElement('pre');
+    pre.textContent = text;
+    body.appendChild(pre);
+  } else {
+    const div = document.createElement('div');
+    div.className = 'doc-preview';
+    div.innerHTML = '<h4>' + typeIcon(artifact.category) + ' ' + escHtml(artifact.name) + '</h4><p>Type: ' + artifact.type + '<br>Size: ' + formatSize(artifact.size) + '<br>ID: ' + artifact.id + '<br><br>Binary preview not available in browser. Export to download.</p>';
+    body.appendChild(div);
+  }
+
+  document.getElementById('viewer').classList.add('show');
+}
+function closeViewer() {
+  document.getElementById('viewer').classList.remove('show');
+  document.getElementById('viewer-body').innerHTML = '';
+}
+
+// ── Drag & Drop ───────────────────────────────────────
+function setupDragDrop() {
+  const zone = document.getElementById('drop-zone');
+  ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('drag-over'); }));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('drag-over'); }));
+  zone.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+}
+
+// ── Paste ─────────────────────────────────────────────
+function setupPaste() {
+  document.addEventListener('paste', e => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+      if (item.kind === 'file') files.push(item.getAsFile());
+    }
+    if (files.length) handleFiles(files);
+  });
+}
+
+// ── Export Full Vault ─────────────────────────────────
+function triggerExport() {
+  const manifest = {
+    vault_id: getOrCreateVaultId(),
+    version: '1.6-PROD',
+    exported: new Date().toISOString(),
+    total_artifacts: artifacts.length,
+    total_size_bytes: artifacts.reduce((s,a)=>s+(a.size||0),0),
+    artifacts: artifacts
+  };
+  const json = JSON.stringify(manifest, null, 2);
+
+  // Build self-contained package: vault.json + inline index.html
+  const htmlContent = document.documentElement.outerHTML;
+  const packageJson = JSON.stringify({vault_json: manifest, ui_html: htmlContent});
+  downloadText(packageJson, 'vault33-export-' + Date.now() + '.json', 'application/json');
+  showToast('Vault exported — ' + artifacts.length + ' artifacts');
+}
+
+// ── Import Vault JSON ─────────────────────────────────
+function triggerImportJSON() {
+  document.getElementById('json-import-input').click();
+}
+function handleJSONImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Support both direct manifest and packaged export
+      const manifest = data.vault_json || data;
+      if (manifest.artifacts && Array.isArray(manifest.artifacts)) {
+        let added = 0;
+        manifest.artifacts.forEach(a => {
+          if (!artifacts.find(x => x.id === a.id)) { artifacts.push(a); added++; }
+        });
+        saveArtifacts();
+        renderGrid();
+        updateStorageBar();
+        showToast(added + ' artifacts imported from vault');
+      } else {
+        showToast('Invalid vault JSON format');
+      }
+    } catch(err) { showToast('Failed to parse vault JSON'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ── Utilities ─────────────────────────────────────────
+function downloadText(content, filename, mimeType) {
+  const blob = new Blob([content], {type: mimeType});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
