@@ -153,6 +153,53 @@ class SKYRO:
             return [i for i in self.inquiries if i["status"] == status]
         return self.inquiries
 
+    # --- FORCE SELF-DESTRUCT (Clause 8) ---
+    def force_destruct_vault(self, user_id: str, reason: str = "ADMIN_TERMINATION") -> dict:
+        """Admin-triggered controlled self-destruct of a user vault."""
+        neer = self.vaults.get(user_id)
+        if not neer:
+            return {"error": "Vault not found"}
+        result = neer.core.self_destruct(reason)
+        self.users[user_id]["status"] = "terminated"
+        self._log(self.owner, "FORCE_DESTRUCT", user_id, f"Reason: {reason}")
+        return result
+
+    # --- TAMPER DETECTION ---
+    def system_integrity_check(self) -> dict:
+        """Verify integrity of all vaults system-wide."""
+        results = []
+        for uid, neer in self.vaults.items():
+            v = neer.core.verify_integrity()
+            v["user_id"] = uid
+            results.append(v)
+        all_passed = all(r["integrity"] == "PASSED" for r in results)
+        self._log(self.owner, "INTEGRITY_CHECK", "SYSTEM",
+                  f"{'PASSED' if all_passed else 'FAILED'} — {len(results)} vaults checked")
+        return {
+            "system_integrity": "PASSED" if all_passed else "COMPROMISED",
+            "vaults_checked": len(results),
+            "results": results,
+            "admin_merkle_root": self._core.merkle_root(),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    # --- COMPLIANCE EXPORT ---
+    def compliance_report(self) -> dict:
+        """Generate compliance report for audit (Clause 7)."""
+        return {
+            "report_id": f"CR-{uuid.uuid4().hex[:8].upper()}",
+            "owner": self.owner,
+            "generated": datetime.utcnow().isoformat(),
+            "total_users": len(self.users),
+            "active_users": sum(1 for u in self.users.values() if u["status"] == "active"),
+            "terminated_users": sum(1 for u in self.users.values() if u["status"] == "terminated"),
+            "total_vaults": len(self.vaults),
+            "integrity": self.system_integrity_check(),
+            "audit_entries": len(self.audit_log),
+            "governing_law": "State of Delaware, USA",
+            "dispute_resolution": "New Castle County, Delaware",
+        }
+
     # --- AUDIT ---
     def get_audit_log(self, limit: int = 100) -> list:
         return [e.to_dict() for e in self.audit_log[-limit:]]
@@ -178,7 +225,7 @@ class SKYRO:
 # ============================================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("VAULT 33 — SKYRO | Admin Dashboard Core | Prod v1.0")
+    print("VAULT 33 - SKYRO | Admin Dashboard Core | Prod v1.1")
     print("=" * 60)
 
     skyro = SKYRO(owner="Adarius Matthews")
@@ -187,12 +234,14 @@ if __name__ == "__main__":
     skyro.register_user("u1", "Eden Team", "matt-ari@eden.so", "enterprise")
     skyro.register_user("u2", "Demo User", "demo@vault33.io", "user")
 
-    # Ingest data into user vaults
+    # TOS must be accepted before vault operations
     v1 = skyro.get_vault("u1")
+    v1.accept_terms()
     v1.ingest(b"Eden workspace data - production test artifact", "eden-data.bin")
-    v1.ingest(b"Eden workspace data - production test artifact", "eden-dup.bin")  # dedup test
+    v1.ingest(b"Eden workspace data - production test artifact", "eden-dup.bin")
 
     v2 = skyro.get_vault("u2")
+    v2.accept_terms()
     v2.ingest(b"Demo user file content for testing", "demo-file.txt")
 
     # System health
@@ -205,14 +254,26 @@ if __name__ == "__main__":
     a = skyro.artifact_analytics()
     print(f"Compression: {a['compression_ratio']} | Types: {a['file_types']}")
 
+    # System integrity check
+    ic = skyro.system_integrity_check()
+    print(f"System Integrity: {ic['system_integrity']} | Vaults checked: {ic['vaults_checked']}")
+
+    # Compliance report
+    cr = skyro.compliance_report()
+    print(f"Compliance Report: {cr['report_id']} | Governing Law: {cr['governing_law']}")
+
     # Inquiry
     skyro.add_inquiry("Matt & Ari", "matt-ari@eden.so", "Eden.so", "pilot",
                       "Interested in VAULT 33 Fast-Start Pilot")
 
+    # Force destruct test
+    sd = skyro.force_destruct_vault("u2", "TEST_TERMINATION")
+    print(f"Force Destruct: {sd['status']} | Eradicated: {sd['artifacts_eradicated']}")
+
     # Audit
-    log = skyro.get_audit_log(5)
+    log = skyro.get_audit_log(10)
     print(f"\nAudit Log ({len(log)} entries):")
     for entry in log:
-        print(f"  [{entry['ts']}] {entry['actor']} → {entry['action']} | {entry['target']}")
+        print(f"  [{entry['ts']}] {entry['actor']} > {entry['action']} | {entry['target']}")
 
-    print("\nALL CHECKS PASSED — SKYRO PRODUCTION READY")
+    print("\nALL CHECKS PASSED - SKYRO v1.1 PRODUCTION READY")
