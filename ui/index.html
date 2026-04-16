@@ -1,76 +1,695 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>VAULT 33</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-body { background: #09090b; font-family: system-ui, -apple-system, sans-serif; }
-.screen { display: none; }
-.screen.active { display: flex; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#09090b">
+  <meta name="description" content="VAULT 33 — Revolutionary autonomous data storage system. 100% offline operation.">
+  <title>VAULT 33 — Offline Storage</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+    :root {
+      --bg: #08090d;
+      --surface: #0e1018;
+      --card: #131620;
+      --border: #1e2232;
+      --accent: #00e5ff;
+      --accent2: #7b61ff;
+      --warn: #ff6b35;
+      --ok: #00e5a0;
+      --text: #c8cedd;
+      --dim: #555d7a;
+      --mono: 'Space Mono', monospace;
+      --body: 'DM Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--body);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .page { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 40px 0 32px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    .logo-title {
+      font-family: var(--mono);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+
+    .logo-sub {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    .vault-status {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--dim);
+      text-align: right;
+    }
+
+    .vault-status .ok { color: var(--ok); }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 16px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: color 0.2s, border-color 0.2s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -18px;
+      padding-bottom: 18px;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+
+    .ingest-area {
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .ingest-area:hover, .ingest-area.drag-over {
+      border-color: var(--accent);
+      background: rgba(0, 229, 255, 0.04);
+    }
+
+    .ingest-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .ingest-icon { font-size: 32px; margin-bottom: 8px; }
+    .ingest-label { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+    .ingest-label strong { color: var(--accent); }
+
+    .file-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+    }
+
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      cursor: pointer;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .file-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .file-icon { font-size: 24px; margin-bottom: 8px; }
+    .file-name {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+      word-break: break-all;
+      margin-bottom: 4px;
+    }
+
+    .file-size {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim);
+    }
+
+    .storage-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      height: 24px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .storage-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      transition: width 0.3s;
+    }
+
+    .storage-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--dim);
+      margin-bottom: 8px;
+    }
+
+    button {
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 8px 18px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    button:hover {
+      background: var(--accent);
+      color: var(--bg);
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    button.danger {
+      border-color: var(--warn);
+      color: var(--warn);
+    }
+
+    button.danger:hover {
+      background: var(--warn);
+      color: var(--bg);
+      box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+    }
+
+    .search-box {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+
+    .search-box:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .empty-state .big { font-size: 32px; margin-bottom: 8px; }
+
+    .viewer-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .viewer-modal.active { display: flex; }
+
+    .viewer-content {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: auto;
+      position: relative;
+    }
+
+    .viewer-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: var(--warn);
+      border: none;
+      color: var(--bg);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .viewer-close:hover { background: #ff8a5e; }
+
+    .viewer-image, .viewer-video, .viewer-audio {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .viewer-text, .viewer-json {
+      padding: 20px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 80vh;
+      overflow: auto;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      margin-top: 48px;
+      padding-top: 24px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--dim);
+      text-align: center;
+    }
+  </style>
 </head>
-<body class="bg-[#09090b] text-white min-h-screen">
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <div class="logo-title">VAULT 33</div>
+        <div class="logo-sub">OFFLINE STORAGE</div>
+      </div>
+      <div class="vault-status">
+        <div><span class="ok">●</span> OPERATIONAL</div>
+        <div id="vault-id" style="margin-top: 4px; font-size: 10px;"></div>
+      </div>
+    </header>
 
-<!-- TERMS SCREEN -->
-<div id="termsScreen" class="screen active fixed inset-0 bg-black/95 flex items-center justify-center z-[99999]">
-<div class="max-w-md mx-4 bg-zinc-900 rounded-3xl p-8 text-center">
-<h1 class="text-4xl font-bold mb-6">VAULT 33 User Agreement</h1>
-<div class="text-left text-sm leading-relaxed max-h-80 overflow-y-auto mb-8 pr-2">
-<p>By using VAULT 33 you agree to:</p>
-<p>• Not attempt any reverse engineering, decompilation, or exploitation of the system.</p>
-<p>• Not modify, delete, or distribute the vault or UI without authorization from Vader Technologies LLC.</p>
-<p>• Not use VAULT 33 for any illegal, harmful, or competitive purpose.</p>
-<p>• Accept full responsibility for your data and usage.</p>
-<p>Violation may result in immediate termination of access and legal action.</p>
-</div>
-<button onclick="acceptTerms()" class="w-full bg-emerald-600 py-4 rounded-3xl text-xl font-semibold">I Accept the Terms & Conditions</button>
-</div>
-</div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('files')">FILES</button>
+      <button class="tab-btn" onclick="switchTab('search')">SEARCH</button>
+      <button class="tab-btn" onclick="switchTab('export')">EXPORT</button>
+    </div>
 
-<!-- AUDIT SCREEN (one-time only) -->
-<div id="auditScreen" class="screen fixed inset-0 bg-black/95 flex items-center justify-center z-[99999]">
-<div class="max-w-md mx-4 bg-zinc-900 rounded-3xl p-8 text-center">
-<h2 class="text-3xl font-bold mb-6 text-emerald-400">Vault Audit Complete</h2>
-<div class="text-left space-y-5 mb-10">
-<div class="flex items-center gap-4"><span class="text-2xl">✅</span><span>Vault ID verified</span></div>
-<div class="flex items-center gap-4"><span class="text-2xl">✅</span><span>Data integrity passed</span></div>
-<div class="flex items-center gap-4"><span class="text-2xl">✅</span><span>5 EB effective capacity confirmed</span></div>
-<div class="flex items-center gap-4"><span class="text-2xl">✅</span><span>Zero-delay reproduction verified</span></div>
-<div class="flex items-center gap-4"><span class="text-2xl">✅</span><span>Living language core operational</span></div>
-</div>
-<button onclick="finishAudit()" class="w-full bg-emerald-600 py-4 rounded-3xl text-xl font-semibold">Continue to Vault</button>
-</div>
-</div>
+    <!-- FILES TAB -->
+    <div id="files" class="tab-content active">
+      <div class="panel">
+        <div class="panel-title">Ingest Files</div>
+        <div class="ingest-area" id="ingestArea">
+          <input type="file" id="fileInput" multiple>
+          <div class="ingest-icon">📁</div>
+          <div class="ingest-label">Drop files here or <strong>click to select</strong></div>
+        </div>
+      </div>
 
-<!-- MAIN UI -->
-<div id="mainUI" class="screen hidden max-w-7xl mx-auto p-6">
-<h1 class="text-5xl font-bold">VAULT 33</h1>
-<p class="text-emerald-400 text-xl">Mobile • Persistent • Transferable</p>
+      <div class="panel">
+        <div class="panel-title">Storage Usage</div>
+        <div class="storage-label" id="storageLabel">0 B / 5 GB</div>
+        <div class="storage-bar">
+          <div class="storage-fill" id="storageFill" style="width: 0%"></div>
+        </div>
+      </div>
 
-<div class="flex justify-between items-baseline mt-10 mb-6">
-<div class="text-sm">Issued Vaults: <span id="issuedCount" class="font-mono text-emerald-400 text-2xl">1</span></div>
-<button onclick="importVault()" class="bg-zinc-800 hover:bg-zinc-700 px-8 py-3 rounded-3xl text-sm font-medium">Import Vault from JSON</button>
-</div>
+      <div class="panel">
+        <div class="panel-title">Artifacts (<span id="artifactCount">0</span>)</div>
+        <div id="fileList" class="file-list"></div>
+        <div id="emptyState" class="empty-state">
+          <div class="big">📭</div>
+          <div>No files ingested yet</div>
+        </div>
+      </div>
+    </div>
 
-<div id="vaultGrid" class="grid grid-cols-2 gap-6"></div>
-</div>
+    <!-- SEARCH TAB -->
+    <div id="search" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">Search Artifacts</div>
+        <input type="text" id="searchBox" class="search-box" placeholder="Search by filename...">
+        <div id="searchResults" class="file-list"></div>
+        <div id="searchEmpty" class="empty-state" style="display: none;">
+          <div class="big">🔍</div>
+          <div>No results found</div>
+        </div>
+      </div>
+    </div>
 
-<!-- VAULT MODAL -->
-<div id="vaultModal" onclick="if(event.target.id==='vaultModal')closeModal()" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[9999]">
-<div onclick="event.stopImmediatePropagation()" class="bg-zinc-900 w-full max-w-2xl mx-4 rounded-3xl p-6 max-h-[90vh] flex flex-col">
-<div class="flex justify-between items-center mb-6">
-<div id="modalVaultName" class="text-3xl font-bold"></div>
-<button onclick="closeModal()" class="text-4xl text-zinc-400">×</button>
-</div>
+    <!-- EXPORT TAB -->
+    <div id="export" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">Export Vault</div>
+        <p style="margin-bottom: 16px; color: var(--dim); font-size: 12px;">
+          Export your vault as a portable JSON manifest that can be imported into another offline vault.
+        </p>
+        <button onclick="exportVault()">EXPORT AS JSON</button>
+        <button onclick="exportAsZip()" style="margin-left: 8px;">EXPORT AS ZIP</button>
+      </div>
+    </div>
+  </div>
 
-<div class="mb-6">
-<div class="flex justify-between text-xs mb-2"><span>5 EB total</span><span id="modalStorageText" class="font-mono"></span></div>
-<div class="h-3 bg-zinc-800 rounded-3xl overflow-hidden">
-<div id="modalUsedBar" class="h-3 bg-emerald-500 transition-all"></div>
-</div>
-</div>
+  <!-- VIEWER MODAL -->
+  <div id="viewerModal" class="viewer-modal">
+    <div class="viewer-content">
+      <button class="viewer-close" onclick="closeViewer()">✕</button>
+      <div id="viewerBody"></div>
+    </div>
+  </div>
 
-<div id="modalDropZone" class="border-2 border-dashed border-zinc-600 rounded-3xl p-8 text-center mb-6 hover:border-emerald-400 transition cursor-pointer">
-Drop files here or
+  <footer>
+    VAULT 33 — Offline Storage | 100% Local | No Cloud Dependency
+  </footer>
+
+  <script>
+    // Initialize IndexedDB
+    const DB_NAME = 'vault33-offline';
+    const STORE_NAME = 'artifacts';
+    let db;
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          db = req.result;
+          resolve();
+        };
+        req.onupgradeneeded = (e) => {
+          const store = e.target.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          store.createIndex('filename', 'filename', { unique: false });
+        };
+      });
+    }
+
+    // Tab switching
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // Ingest files
+    document.getElementById('ingestArea').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+
+    document.getElementById('ingestArea').addEventListener('dragover', (e) => {
+      e.preventDefault();
+      document.getElementById('ingestArea').classList.add('drag-over');
+    });
+
+    document.getElementById('ingestArea').addEventListener('dragleave', () => {
+      document.getElementById('ingestArea').classList.remove('drag-over');
+    });
+
+    document.getElementById('ingestArea').addEventListener('drop', (e) => {
+      e.preventDefault();
+      document.getElementById('ingestArea').classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+    });
+
+    async function handleFiles(files) {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+
+      for (let file of files) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const artifact = {
+            id: 'ART-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+            filename: file.name,
+            mimeType: file.type,
+            fileSize: file.size,
+            data: e.target.result,
+            createdAt: new Date().toISOString()
+          };
+          store.add(artifact);
+        };
+        reader.readAsArrayBuffer(file);
+      }
+
+      tx.oncomplete = () => {
+        refreshFileList();
+        updateStorageBar();
+      };
+    }
+
+    async function refreshFileList() {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const artifacts = req.result;
+        const fileList = document.getElementById('fileList');
+        const emptyState = document.getElementById('emptyState');
+
+        if (artifacts.length === 0) {
+          fileList.innerHTML = '';
+          emptyState.style.display = 'block';
+          document.getElementById('artifactCount').textContent = '0';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+        document.getElementById('artifactCount').textContent = artifacts.length;
+
+        fileList.innerHTML = artifacts.map(art => {
+          const icon = getFileIcon(art.mimeType);
+          const size = formatBytes(art.fileSize);
+          return `
+            <div class="file-card" onclick="viewFile('${art.id}')">
+              <div class="file-icon">${icon}</div>
+              <div class="file-name">${art.filename}</div>
+              <div class="file-size">${size}</div>
+            </div>
+          `;
+        }).join('');
+      };
+    }
+
+    function getFileIcon(mimeType) {
+      if (mimeType.startsWith('image/')) return '🖼️';
+      if (mimeType.startsWith('video/')) return '🎬';
+      if (mimeType.startsWith('audio/')) return '🎵';
+      if (mimeType === 'application/pdf') return '📄';
+      if (mimeType.includes('text')) return '📝';
+      if (mimeType.includes('json')) return '{}';
+      return '📦';
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    async function updateStorageBar() {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const artifacts = req.result;
+        const totalSize = artifacts.reduce((sum, art) => sum + art.fileSize, 0);
+        const quota = 5 * 1024 * 1024 * 1024; // 5 GB
+        const percentage = Math.min((totalSize / quota) * 100, 100);
+
+        document.getElementById('storageFill').style.width = percentage + '%';
+        document.getElementById('storageLabel').textContent = formatBytes(totalSize) + ' / ' + formatBytes(quota);
+      };
+    }
+
+    async function viewFile(id) {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+
+      req.onsuccess = () => {
+        const artifact = req.result;
+        if (!artifact) return;
+
+        const blob = new Blob([artifact.data], { type: artifact.mimeType });
+        const url = URL.createObjectURL(blob);
+
+        let content = '';
+        if (artifact.mimeType.startsWith('image/')) {
+          content = `<img src="${url}" class="viewer-image" style="max-width: 100%; padding: 20px;">`;
+        } else if (artifact.mimeType.startsWith('video/')) {
+          content = `<video controls class="viewer-video" style="max-width: 100%; padding: 20px;"><source src="${url}" type="${artifact.mimeType}"></video>`;
+        } else if (artifact.mimeType.startsWith('audio/')) {
+          content = `<audio controls class="viewer-audio" style="width: 100%; padding: 20px;"><source src="${url}" type="${artifact.mimeType}"></audio>`;
+        } else if (artifact.mimeType === 'application/pdf') {
+          content = `<iframe src="${url}" style="width: 100%; height: 80vh; border: none;"></iframe>`;
+        } else if (artifact.mimeType.includes('text') || artifact.mimeType.includes('json')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            document.getElementById('viewerBody').innerHTML = `<div class="viewer-text">${e.target.result}</div>`;
+            document.getElementById('viewerModal').classList.add('active');
+          };
+          reader.readAsText(blob);
+          return;
+        } else {
+          content = `<div class="viewer-text">Binary file: ${artifact.filename}</div>`;
+        }
+
+        document.getElementById('viewerBody').innerHTML = content;
+        document.getElementById('viewerModal').classList.add('active');
+      };
+    }
+
+    function closeViewer() {
+      document.getElementById('viewerModal').classList.remove('active');
+      document.getElementById('viewerBody').innerHTML = '';
+    }
+
+    async function exportVault() {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const artifacts = req.result.map(art => ({
+          id: art.id,
+          filename: art.filename,
+          mimeType: art.mimeType,
+          fileSize: art.fileSize,
+          createdAt: art.createdAt
+        }));
+
+        const manifest = {
+          vaultId: 'VAULT-' + Date.now(),
+          exportedAt: new Date().toISOString(),
+          artifactCount: artifacts.length,
+          totalSize: artifacts.reduce((sum, a) => sum + a.fileSize, 0),
+          artifacts: artifacts
+        };
+
+        const json = JSON.stringify(manifest, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'vault-manifest-' + Date.now() + '.json';
+        a.click();
+      };
+    }
+
+    async function exportAsZip() {
+      alert('ZIP export requires a compression library. For now, use JSON export.');
+    }
+
+    // Search
+    document.getElementById('searchBox').addEventListener('input', async (e) => {
+      const query = e.target.value.toLowerCase();
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+
+      req.onsuccess = () => {
+        const artifacts = req.result.filter(art => art.filename.toLowerCase().includes(query));
+        const resultsDiv = document.getElementById('searchResults');
+        const emptyDiv = document.getElementById('searchEmpty');
+
+        if (artifacts.length === 0) {
+          resultsDiv.innerHTML = '';
+          emptyDiv.style.display = 'block';
+          return;
+        }
+
+        emptyDiv.style.display = 'none';
+        resultsDiv.innerHTML = artifacts.map(art => {
+          const icon = getFileIcon(art.mimeType);
+          const size = formatBytes(art.fileSize);
+          return `
+            <div class="file-card" onclick="viewFile('${art.id}')">
+              <div class="file-icon">${icon}</div>
+              <div class="file-name">${art.filename}</div>
+              <div class="file-size">${size}</div>
+            </div>
+          `;
+        }).join('');
+      };
+    });
+
+    // Initialize
+    window.addEventListener('load', async () => {
+      await initDB();
+      document.getElementById('vault-id').textContent = 'VAULT-' + Date.now();
+      refreshFileList();
+      updateStorageBar();
+
+      // Register service worker
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW registration failed:', err));
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+# ============================================================
+# Vault 33 — docker-compose.yml
+# ============================================================
+# Quick start:
+#   1. Copy this file to your server
+#   2. Set VAULT33_KEY to a strong secret
+#   3. Run: docker-compose up -d
+#   4. Open: http://localhost:8033
+# ============================================================
+
+version: "3.9"
+
+services:
+  vault33:
+    image: vadertech/vault33:latest
+    # Or build locally:
+    # build: .
+    container_name: vault33
+    restart: unless-stopped
+
+    ports:
+      - "8033:8033"      # Web dashboard + REST API
+
+    volumes:
+      # IMPORTANT: Mount your actual storage here
+      # Change /mnt/vault_storage to wherever you have disk space
+      - /mnt/vault_storage:/vault_data
+
+    environment:
+      # ⚠️  CHANGE THIS — use a strong random key
+      # Generate one: python -c "import secrets; print(secrets.token_hex(32))"
+      VAULT33_KEY: "${VAULT33_KEY:-CHANGE_THIS_TO_A_STRONG_SECRET_KEY}"
+
+      # Vault data directory inside container (matches volume mount)
+      VAULT33_DIR: "/vault_data"
+
+      # Chunk size in MB — 64MB is good for most workloads
+      # Increase for large sequential files (e.g. 128MB for video/ML datasets)
+      # Decrease for small files (e.g. 16MB for logs)
+      VAULT33_CHUNK_MB: "64"
+
+      # Parallel chunk processors — set to CPU count for best throughput
+      VAULT33_WORKERS: "4"
+
+      # API port
+      VAULT33_PORT: "8033"
+
+    # Resource limits — adjust based on your hardware
+    # For 10TB ingestion: more RAM = larger OS page cache = faster
+    deploy:
+      resources:
+        limits:
+          memory: 4G        # Minimum 2G, 8G+ recommended for large datasets
+        reservations:
+          memory: 512M
+
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8033/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+# ── Optional: nginx reverse proxy (uncomment for HTTPS) ─────────────────────
+#  nginx:
+#    image: nginx:alpine
+#    container_name: vault33_nginx
+#    restart: unless-stopped
+#    ports:
+#      - "80:80"
+#      - "443:443"
+#    volumes:
+#      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+#      - ./certs:/etc/nginx/certs:ro
+#    depends_on:
+#      - vault33
+
+# ── Optional: backup sidecar (uncomment to auto-backup vault index) ─────────
+#  backup:
+#    image: alpine
+#    container_name: vault33_backup
+#    volumes:
+#      - /mnt/vault_storage:/vault_data:ro
+#      - /mnt/backups:/backups
+#    entrypoint: >
+#      sh -c "while true; do
+#        cp /vault_data/vault.db /backups/vault_$(date +%Y%m%d_%H%M%S).db;
+#        find /backups -name '*.db' -mtime +7 -delete;
+#        sleep 86400;
+#      done"
