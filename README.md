@@ -185,6 +185,68 @@ Manifest with chunk IDs + metadata
 
 MIT License. See [LICENSE](LICENSE) for details.
 
+
+---
+
+## License Validation
+
+After purchasing [Vault 33 Early Access](https://vault33.lemonsqueezy.com/checkout/buy/ecaec945-6de8-4e29-84a8-4c99772d834e), you will receive a license key by email in the format `V33-<key>`.
+
+### Programmatic Validation
+
+Validate your license key at startup to confirm it is active and unrevoked:
+
+```python
+import urllib.request
+import json
+
+def validate_vault33_license(license_key: str) -> dict:
+    """
+    Validate a Vault 33 license key against the official API.
+    Returns a dict with 'valid' (bool) and metadata.
+    """
+    url = f"https://vault33.co/api/license/validate?key={license_key}"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "vault33-sdk/1.1"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read())
+    except Exception as e:
+        # Fail open on network errors — do not block offline use
+        return {"valid": True, "warning": f"License check skipped: {e}"}
+
+# Example usage
+result = validate_vault33_license("V33-YOUR-LICENSE-KEY-HERE")
+if result.get("valid"):
+    print(f"✅ License valid — issued {result.get('issuedAt', 'N/A')}")
+else:
+    print("❌ Invalid or revoked license. Purchase at https://vault33.co")
+```
+
+### Response Format
+
+```json
+{
+  "valid": true,
+  "orderId": "LS-123456",
+  "email": "cu***@example.com",
+  "issuedAt": "2026-05-27T12:00:00.000Z",
+  "expiresAt": null,
+  "status": "paid"
+}
+```
+
+| Field | Description |
+|---|---|
+| `valid` | `true` if the license is active and HMAC-verified |
+| `orderId` | Lemon Squeezy order reference |
+| `email` | Masked purchaser email for confirmation |
+| `issuedAt` | UTC timestamp of purchase |
+| `expiresAt` | `null` for lifetime licenses |
+| `status` | `paid`, `refunded`, or `failed` |
+
+> **Offline use:** The validation endpoint is informational only. The SDK does not phone home on every operation — validate once at startup and cache the result locally.
+
+
 ---
 
 **[→ Get SKYRO Early Access — $29](https://vault33.lemonsqueezy.com/checkout/buy/ecaec945-6de8-4e29-84a8-4c99772d834e)** | [vault33.co](https://vault33.co) | [Request a Demo](https://vault33.co/contact)
