@@ -3,7 +3,7 @@
 NEER — VAULT 33 Customer Vault Backend Core
 33-Layer Living Language Architecture
 Zero Traditional Database | Instant Retrieval | Atomic Compression
-Production v1.0
+Production v1.1
 """
 import hashlib, json, uuid, time, hmac, zlib, base64, os
 from datetime import datetime
@@ -150,16 +150,35 @@ class LivingLanguageCore:
 
     # --- TAMPER DETECTION ---
     def verify_integrity(self) -> dict:
-        """Verify vault integrity via Merkle proof chain."""
+        """
+        Verify vault integrity via Merkle proof chain and per-artifact hash check.
+
+        FIX GAP-04: Previous implementation used `or True` which made every
+        artifact always pass regardless of hash mismatch. Now correctly compares
+        the SHA-256 of the stored compressed data against the recorded hash.
+
+        Note: artifacts store the SHA-256 of the *original* (pre-compression) data
+        in the 'hash' field. We verify by decompressing and re-hashing.
+        """
         expected_root = self.merkle_root()
-        artifact_hashes_valid = all(
-            hashlib.sha256(base64.b64decode(a["data"])).hexdigest()[:16] or True
-            for a in self.artifacts.values()
-        )
+        tampered = []
+
+        for aid, a in self.artifacts.items():
+            try:
+                raw = zlib.decompress(base64.b64decode(a["data"]))
+                actual_hash = hashlib.sha256(raw).hexdigest()
+                if actual_hash != a["hash"]:
+                    tampered.append(aid)
+            except Exception:
+                tampered.append(aid)
+
+        artifact_hashes_valid = len(tampered) == 0
+
         return {
             "integrity": "PASSED" if artifact_hashes_valid else "FAILED",
             "merkle_root": expected_root,
             "artifacts_verified": len(self.artifacts),
+            "tampered_artifacts": tampered,
             "timestamp": datetime.utcnow().isoformat(),
         }
 
@@ -204,10 +223,12 @@ class LivingLanguageCore:
 class NEER:
     """NEER - Customer Vault API with full legal compliance."""
     VERSION = "1.1"
-    TOS_ACCEPTED = False
 
     def __init__(self):
         self.core = LivingLanguageCore()
+        # FIX SEC-04: TOS_ACCEPTED was a class variable — all instances shared the same flag.
+        # Now it is an instance variable so each NEER instance tracks its own acceptance state.
+        self.TOS_ACCEPTED: bool = False
         self._compliance_log: List[dict] = []
         print(f"NEER v{self.VERSION} | Vault {self.core.vault_id} | 33-Layer Core Online")
 
@@ -280,10 +301,15 @@ if __name__ == "__main__":
     dup = neer.ingest(d, "test-dup.txt")
     assert dup == aid, "DEDUP FAIL"
     v = neer.verify()
+    assert v["integrity"] == "PASSED", f"INTEGRITY CHECK FAILED: {v}"
     print(f"Integrity: {v['integrity']} | Artifacts verified: {v['artifacts_verified']}")
     s = neer.stats()
     print(f"Artifacts: {s['artifacts']} | Used: {s['used_bytes']}B | Free: {s['free_eb']} EB")
     print(f"Merkle Root: {s['merkle_root']}")
+    # TOS isolation test (SEC-04 fix verification)
+    neer2 = NEER()
+    assert not neer2.TOS_ACCEPTED, "SEC-04 FIX FAILED: TOS leaked between instances"
+    print("TOS isolation: PASS (instances are independent)")
     # Self-destruct test
     sd = neer.self_destruct("TEST_DESTRUCT")
     assert sd["status"] == "DESTROYED"
